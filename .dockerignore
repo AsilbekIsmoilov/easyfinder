@@ -1,0 +1,16 @@
+.git
+.gitignore
+backend/.venv
+backend/__pycache__
+backend/**/*.pyc
+backend/.env
+backend/.env.production
+.env.mysql
+*.db
+*.log
+backend/media
+*.pid
+backups
+backend/.worker.pid
+backend/.scheduler.pid
+backend/.api.pid

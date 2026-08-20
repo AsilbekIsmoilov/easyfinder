@@ -1,0 +1,103 @@
+pipeline yaratish;🟢
+viewers qo'shish; +🟢
+comment qismini qo'shish; (comment qoldirsa bo'ladigan kanallarga o'sha post ichida qoldiriladi or botdagi postda qolib ketadi.) +🟢
+layk bosish; +🟢
+pereslat; +🟢
+rasm qo'shish; +🟢
+filter qo'shish - narx, ketish kelish data, +🟢
+til tanlash - ru uz +🟢
+loyiha performance ko'rib chiqish (kesh, api javoblari tezligi, db nagruzka) 🟢
+bot --> userga har pipeline ishlaganda notification yuborib turishi; 🟢
+db ni o'zgartirish sql --> mysql or postgres 🟢
+xar bir kanaldan 20 tagacha cheklovni olib tashlash kerak 🟢
+claude o'rniga bepul variant 🟢
+
+userlarni saqlab ketish :
+👥 Jami foydalanuvchilar
+🟢 Bugungi aktiv foydalanuvchilar (DAU)
+📅 Oxirgi 7 kun aktiv foydalanuvchilari (WAU)
+📆 Oxirgi 30 kun aktiv foydalanuvchilari (MAU)
+🔍 Eng ko'p qidirilgan davlatlar
+💰 O'rtacha qidirilgan budjet
+❤️ Eng ko'p ko'rilgan turlar
+📲 Qaysi manbadan (Telegram, Instagram yoki web) eng ko'p bosish bo'lgan🟢
+
+kanal egalari uchun feature : requirements (telefon raqam, batafsil ma'lumot) bilan o'zini kanalini qo'shib qo'yish
+
+documentation
+
+bot ga description qo'shish;
+
+instagram va web saytlarni ham ko'rib chiqish;
+
+postni korrektirovka qilish (1 post ichida 2 3 4 ta davlat bo'lsa hammasini alohida post qilish) va anniq anniq datalarni chiqarish
+
+like va dislike qo'shish
+
+commentga kirganidan so'ng 2 ta tab 1) kanalga comment 2) feedback
+
+Ilovaga birinchi kirishda 3 ta qisqa savol:
+Qayerga borishni xohlaysiz?
+Budjetingiz qancha?
+Taxminiy sana qaysi?
+Javoblardan keyin bosh sahifada “Siz uchun” turlari ko‘rsatiladi. Keyingi tashriflarda foydalanuvchining qidiruvlari va ko‘rgan turlariga qarab tavsiyalar yaxshilanadi.
+
+“Issiq takliflar” karuseli (🔥 Arzon takliflar,⚡ Yaqinda uchadigan turlar, 👨‍👩‍👧 Oilaviy turlar)
+
+Smart filter paneli
+Select va dropdown o‘rniga chip-buttonlardan foydalanish:
+🔥 Arzon 🏖 Dengiz 👨‍👩‍👧 Oila 5★ All inclusive
+
+Xarita orqali qidirish
+Interaktiv dunyo xaritasida davlatlar ustida mavjud turlar soni va boshlang‘ich narx ko‘rsatiladi:
+Turkiya — 28 tur, $650 dan
+BAA — 17 tur, $720 dan
+Misr — 12 tur, $590 dan (test)
+
+“Menga tur topib ber” yordamchisi
+10. “Menga tur topib ber” yordamchisi
+Bosh sahifada bitta katta interaktiv tugma:
+✨ Menga mos tur toping
+
+Keyin chat ko‘rinishida:
+Qayerga borishni xohlaysiz?
+Necha kishi?
+Budjet qancha?
+Qaysi sanalarda?
+
+Oxirida 3–5 ta eng mos variant ko‘rsatiladi. Buni mavjud bepul filter va ranking logikasi bilan qilish mumkin; AI API shart emas.
+
+Tur tafsilotlarini yaxshilash
+Tur ochilganda:
+yuqorida rasm galereyasi;
+narx va bron tugmasi doim ko‘rinadigan sticky panel;
+kunma-kun dastur;
+narxga kiradigan va kirmaydigan xizmatlar;
+mehmonxona;
+uchish va qaytish sanasi;
+xaritadagi joylashuv;
+kanalning original posti;
+o‘xshash turlar.
+
+Telegram bot orqali shaxsiy, lekin bezovta qilmaydigan xabarlar:
+
+start avgust boshidan !!!!!!!!!!!
+
+
+
+
+
+
+------------------------------------------------------------------------------
+
+aniqroq qilish kerak :
+
+davlat va shahar nomlarini;
+tur narxlarini;
+Вылет 
+Длительность 
+Питание
+
+------------------------------------------------------
+
+tur firmalar ga murojaat qilinadi + tur firmalar o'zlarini kanalini qo'shib qo'yishlari ham mumkin.

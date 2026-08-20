@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1324">
+<title>TurBozor — eng yaxshi turlar</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+(function () {
+  const telegram = window.Telegram && window.Telegram.WebApp;
+  const preview = new URLSearchParams(location.search).get("theme");
+  const systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme =
+    preview === "light" || preview === "dark" ? preview :
+    (telegram && telegram.colorScheme) || (systemDark ? "dark" : "light");
+})();
+</script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #f4f7fb);
+    --surface: var(--tg-theme-secondary-bg-color, #ffffff);
+    --surface-strong: #ffffff;
+    --text: var(--tg-theme-text-color, #101828);
+    --muted: var(--tg-theme-hint-color, #667085);
+    --primary: var(--tg-theme-button-color, #4f46e5);
+    --primary-text: var(--tg-theme-button-text-color, #ffffff);
+    --line: rgba(148, 163, 184, .22);
+    --success: #12b76a;
+    --warning: #f79009;
+    --radius-sm: 12px;
+    --radius-md: 18px;
+    --radius-lg: 24px;
+    --shadow: 0 12px 32px rgba(15, 23, 42, .08);
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font: 15px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 12% -8%, rgba(79, 70, 229, .16), transparent 34%),
+      var(--bg);
+  }
+  button, input { font: inherit; }
+  button { color: inherit; }
+  .app { width: min(100%, 720px); margin: 0 auto; padding: 0 14px calc(34px + env(safe-area-inset-bottom)); }
+  .hero {
+    margin: 0 -14px 18px;
+    padding: calc(18px + env(safe-area-inset-top)) 20px 28px;
+    color: #fff;
+    background: linear-gradient(135deg, #111c3c 0%, #312e81 58%, #4f46e5 100%);
+    border-radius: 0 0 30px 30px;
+    box-shadow: 0 16px 40px rgba(49, 46, 129, .24);
+  }
+  .eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; opacity: .8; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #5ee9a5; box-shadow: 0 0 0 5px rgba(94,233,165,.13); }
+  h1 { margin: 10px 0 6px; font-size: clamp(25px, 7vw, 34px); line-height: 1.15; letter-spacing: -.7px; }
+  .hero p { margin: 0; max-width: 440px; color: rgba(255,255,255,.72); font-size: 14px; }
+  .discovery-row { height:52px; display:grid; grid-template-columns:minmax(0,1fr) 116px; align-items:stretch; gap:8px; margin-top:20px; }
+  .search-wrap { position:relative; min-width:0; height:52px; }
+  .match-tool { width:116px; min-width:0; height:52px; min-height:0; padding:0 10px; display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1px solid rgba(255,255,255,.2); border-radius:16px; color:#fff; background:rgba(255,255,255,.13); box-shadow:0 8px 24px rgba(15,23,42,.13); backdrop-filter:blur(10px); font:inherit; font-size:12px; font-weight:850; white-space:nowrap; cursor:pointer; }
+  .match-tool svg { width:19px; height:19px; flex:0 0 auto; }
+  .match-tool { color:var(--ui-text); background:var(--ui-surface); border-color:var(--ui-border); box-shadow:0 5px 18px rgba(30,41,59,.045); }
+  .match-tool.active { color:var(--ui-accent); background:var(--ui-surface); border-color:var(--ui-accent-border); box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-accent) 8%,transparent); }
+  .search-icon {
+    position: absolute; left: 14px; top: 50%; width: 20px; height: 20px;
+    transform: translateY(-50%); color: #64748b; pointer-events: none;
+  }
+  .search-input {
+    width:100%; height:52px; min-height:0; padding:0 44px 0 42px;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 16px; outline: none;
+    color: #101828; background: rgba(255,255,255,.96);
+    box-shadow: 0 8px 24px rgba(15,23,42,.16); transition: box-shadow .2s, transform .2s;
+  }
+  .search-input:focus { box-shadow: 0 0 0 4px rgba(129,140,248,.3), 0 8px 24px rgba(15,23,42,.18); }
+  .clear-search {
+    position: absolute; right: 7px; top: 7px; width: 38px; height: 38px;
+    border: 0; border-radius: 12px; background: transparent; color: #64748b; cursor: pointer;
+  }
+  .filter-row {
+    display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+    margin: 0 -14px 16px; padding: 0 14px 4px;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-pill {
+    flex: 0 0 auto; min-height: 44px; padding: 0 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--surface); box-shadow: 0 5px 16px rgba(15,23,42,.05); cursor: pointer;
+  }
+  .filter-pill.active { color: #fff; border-color: transparent; background: var(--primary); }
+  .filter-pill svg { width: 15px; height: 15px; }
+  .sticky-discovery { position:static; margin:0; padding:0; }
+  .sticky-discovery .discovery-row { margin-top:0; margin-bottom:12px; }
+  .sticky-discovery .filter-row { margin-bottom:16px; }
+  .scroll-top { position:fixed; right:max(16px,calc((100vw - 720px)/2 + 16px)); bottom:calc(18px + env(safe-area-inset-bottom)); z-index:32; width:48px; height:48px; display:grid; place-items:center; border:1px solid var(--ui-accent-border); border-radius:16px; color:var(--ui-accent-text); background:var(--ui-accent); box-shadow:0 12px 30px rgba(15,23,42,.22); opacity:0; visibility:hidden; transform:translateY(12px); transition:opacity .2s,transform .2s,visibility .2s; cursor:pointer; }
+  .scroll-top.show { opacity:1; visibility:visible; transform:translateY(0); }
+  body:has(.sheet-backdrop.open) .scroll-top { opacity:0; visibility:hidden; pointer-events:none; transform:translateY(12px); }
+  .scroll-top svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.3; }  .hot-section { margin:0 0 18px; }
+  .hot-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 2px 10px; }
+  .hot-head h2 { margin:0; color:var(--ui-text); font-size:18px; letter-spacing:-.25px; }
+  .hot-tabs { display:flex; gap:7px; margin:0 -14px 10px; padding:0 14px 3px; overflow-x:auto; scrollbar-width:none; }
+  .hot-tabs::-webkit-scrollbar, .hot-track::-webkit-scrollbar { display:none; }
+  .hot-tab { flex:0 0 auto; min-height:38px; padding:0 12px; border:1px solid var(--ui-border); border-radius:999px; color:var(--ui-text-soft); background:var(--ui-surface); font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
+  .hot-tab.active { color:var(--ui-accent-text); border-color:var(--ui-accent); background:var(--ui-accent); }
+  .hot-track { display:flex; gap:10px; margin:0 -14px; padding:0 14px 5px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
+  .hot-card { position:relative; flex:0 0 min(76vw,270px); height:128px; overflow:hidden; scroll-snap-align:start; border:1px solid var(--ui-border); border-radius:19px; color:#fff; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 8px 22px rgba(15,23,42,.1); cursor:pointer; }
+  .hot-card img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .hot-card-shade { position:absolute; inset:0; background:linear-gradient(90deg,rgba(2,6,23,.88),rgba(2,6,23,.36)); }
+  .hot-card-body { position:relative; z-index:1; height:100%; padding:14px; display:flex; flex-direction:column; justify-content:flex-end; text-align:left; }
+  .hot-card-route { overflow:hidden; font-size:16px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
+  .hot-card-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:5px; color:rgba(255,255,255,.8); font-size:11px; }
+  .hot-card-price { color:#fff; font-size:15px; font-weight:900; }
+  .hot-empty { padding:18px; width:100%; border:1px dashed var(--ui-border); border-radius:18px; color:var(--ui-text-soft); background:var(--ui-subtle); text-align:center; font-size:13px; }  .toolbar { display: flex; align-items: end; justify-content: space-between; gap: 14px; margin: 0 2px 12px; }
+  .toolbar h2 { margin: 0; font-size: 18px; letter-spacing: -.25px; }
+  .result-note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .reset {
+    min-height: 40px; padding: 0 10px; border: 0; border-radius: 11px;
+    color: var(--primary); background: transparent; font-weight: 650; cursor: pointer;
+  }
+  .tour-list { display: grid; gap: 14px; }
+  .card {
+    overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg);
+    background: var(--surface); box-shadow: var(--shadow);
+    animation: rise .35s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  .photo-wrap { position: relative; aspect-ratio: 16/9; background: linear-gradient(135deg,#dbeafe,#e0e7ff); }
+  .tour-photo { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .photo-shade { position: absolute; inset: auto 0 0; height: 45%; background: linear-gradient(transparent,rgba(2,6,23,.48)); }
+  .days-badge {
+    position: absolute; top: 12px; left: 12px; padding: 7px 10px;
+    color: #fff; background: rgba(15,23,42,.72); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 999px; font-size: 12px; font-weight: 700;
+  }
+  .source-badge {
+    position: absolute; right: 12px; bottom: 12px; padding: 5px 9px 5px 5px;
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #fff; background: rgba(15,23,42,.76); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 10px; font-size: 11px; font-weight: 700;
+  }
+  .card-body { padding: 17px; }
+  .destination { min-width:0; }
+  .destination-country { margin-bottom:2px; color:var(--ui-text-soft); font-size:11px; font-weight:650; }
+  .destination-city { overflow:hidden; color:var(--ui-text); font-size:18px; font-weight:800; line-height:1.25; text-overflow:ellipsis; white-space:nowrap; }
+  .more-content { padding:2px 0 14px; }
+  .more-close-label { display:none; }
+  details[open] .more-open-label { display:none; }
+  details[open] .more-close-label { display:inline; }
+  .photo-placeholder { width:100%; height:100%; display:grid; place-items:center; background:linear-gradient(135deg,var(--ui-accent-soft),var(--ui-subtle-strong)); }
+  .photo-placeholder img { width:min(46%,150px); height:min(46%,150px); object-fit:contain; filter:drop-shadow(0 8px 16px rgba(15,76,153,.18)); }
+  .more-content .tags { margin:2px 0 12px; }  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .card h3 { margin: 0; font-size: 19px; line-height: 1.28; letter-spacing: -.3px; }
+  .location { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: var(--muted); font-size: 13px; }
+  .price { flex: 0 0 auto; color: var(--primary); font-size: 19px; font-weight: 800; white-space: nowrap; }
+  .facts {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+    margin: 15px 0; padding: 12px; border-radius: 15px; background: rgba(148,163,184,.09);
+  }
+  .fact { min-width: 0; }
+  .fact-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .fact-value { margin-top: 2px; overflow: hidden; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .summary { white-space: pre-line; margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+  .summary.is-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+  .summary-wrap { margin-bottom: 12px; }
+  .summary-toggle { margin-top: 5px; padding: 0; border: 0; color: var(--primary); background: transparent; font: inherit; font-size: 12.5px; font-weight: 750; cursor: pointer; }
+  .summary-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 13px; }
+  .tag { padding: 5px 8px; border-radius: 8px; color: #475467; background: #f2f4f7; font-size: 11px; }
+  details { border-top: 1px solid var(--line); }
+  summary {
+    min-height: 46px; display: flex; align-items: center; justify-content: space-between;
+    color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; list-style: none;
+  }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content: "＋"; color: var(--primary); font-size: 18px; }
+  details[open] summary::after { content: "−"; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; padding: 0 0 14px; }
+  .detail-item span { display: block; color: var(--muted); font-size: 11px; }
+  .detail-item strong { display: block; margin-top: 1px; font-size: 13px; }
+  .original {
+    max-height: 170px; overflow: auto; margin: 0 0 14px; padding: 11px;
+    border-radius: 12px; color: var(--muted); background: rgba(148,163,184,.08);
+    white-space: pre-wrap; font-size: 12px;
+  }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+  .added { color: var(--muted); font-size: 11px; }
+  .open {
+    min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 13px; color: var(--primary-text); background: var(--primary);
+    text-decoration: none; font-size: 13px; font-weight: 750;
+  }
+  .empty, .error {
+    padding: 54px 24px; text-align: center; color: var(--muted);
+    border: 1px dashed var(--line); border-radius: var(--radius-lg); background: var(--surface);
+  }
+  .empty-icon { font-size: 34px; margin-bottom: 8px; }
+  .skeleton { height: 380px; border-radius: var(--radius-lg); background: linear-gradient(90deg,#e9edf3 25%,#f7f8fa 37%,#e9edf3 63%); background-size: 400% 100%; animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { to { background-position: -100% 0; } }
+  .sheet-backdrop {
+    position: fixed; inset: 0; z-index: 20; display: none; align-items: flex-end;
+    background: rgba(2,6,23,.48); backdrop-filter: blur(3px);
+  }
+  .sheet-backdrop.open { display: flex; }
+  .sheet {
+    width: min(100%,720px); max-height: 76vh; margin: 0 auto; padding: 10px 16px calc(22px + env(safe-area-inset-bottom));
+    overflow: auto; border-radius: 26px 26px 0 0; color: var(--text); background: var(--surface-strong);
+    animation: sheetUp .22s ease;
+  }
+  @keyframes sheetUp { from { transform: translateY(30px); opacity: .5; } }
+  .handle { width: 42px; height: 4px; margin: 2px auto 17px; border-radius: 4px; background: #d0d5dd; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; }
+  .sheet h3 { margin: 0; font-size: 20px; }
+  .sheet-close { width: 44px; height: 44px; border: 0; border-radius: 50%; background: #f2f4f7; cursor: pointer; }
+  .option-grid { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+  .option {
+    min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 13px;
+    background: var(--surface); cursor: pointer;
+  }
+  .option.selected { color: #fff; border-color: var(--primary); background: var(--primary); }
+  @media (prefers-color-scheme: dark) {
+    :root { --surface-strong: #172033; --line: rgba(148,163,184,.18); }
+    .tag { color: #cbd5e1; background: rgba(148,163,184,.14); }
+    .sheet-close { color: #e2e8f0; background: rgba(148,163,184,.15); }
+    .skeleton { background: linear-gradient(90deg,#1e293b 25%,#334155 37%,#1e293b 63%); background-size:400% 100%; }
+  }
+  /* Light modern visual system */
+  :root {
+    --bg: var(--tg-theme-bg-color, #f6f8fc);
+    --surface: var(--tg-theme-secondary-bg-color, #ffffff);
+    --surface-strong: #ffffff;
+    --text: var(--tg-theme-text-color, #172033);
+    --muted: var(--tg-theme-hint-color, #748094);
+    --primary: var(--tg-theme-button-color, #2563eb);
+    --primary-text: var(--tg-theme-button-text-color, #ffffff);
+    --line: rgba(100, 116, 139, .14);
+    --soft-blue: #eff6ff;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --shadow: 0 7px 24px rgba(30, 64, 175, .055);
+  }
+  html, body { background-color: var(--bg); }
+  body {
+    background: radial-gradient(circle at 50% -18%, rgba(59,130,246,.09), transparent 34%), var(--bg);
+  }
+  .app { padding: 12px 14px calc(34px + env(safe-area-inset-bottom)); }
+  .hero {
+    margin: 0 0 16px; padding: calc(10px + env(safe-area-inset-top)) 4px 4px;
+    color: var(--text); background: transparent; border-radius: 0; box-shadow: none;
+  }
+  .brand-row {
+    min-height: 42px; display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 18px;
+  }
+  .brand { display: inline-flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 800; letter-spacing: -.25px; }
+  .brand-mark {
+    width: 38px; height: 38px; display: block; object-fit: contain;
+    filter: drop-shadow(0 5px 8px rgba(15, 76, 153, .18));
+  }
+  .fresh-badge {
+    padding: 6px 9px; border: 1px solid #dbeafe; border-radius: 999px;
+    color: #2563eb; background: #eff6ff; font-size: 11px; font-weight: 700;
+  }
+  h1 { max-width: 340px; margin: 0 0 8px; font-size: clamp(27px,7vw,36px); line-height: 1.1; color: var(--text); letter-spacing: -1px; }
+  .hero p { max-width: 430px; color: var(--muted); font-size: 13.5px; }
+  .search-wrap { margin-top:0; }
+  .search-input {
+    height:52px; min-height:52px; border:1px solid var(--line); border-radius:16px;
+    color: var(--text); background: var(--surface); box-shadow: 0 5px 18px rgba(30,41,59,.045);
+  }
+  .search-input:focus { border-color: rgba(37,99,235,.42); box-shadow: 0 0 0 4px rgba(37,99,235,.09); }
+  .filter-row { margin: 0 -14px 15px; padding: 2px 14px 5px; }
+  .filter-pill {
+    min-height: 42px; padding: 0 13px; border-color: var(--line);
+    background: var(--surface); box-shadow: none; font-size: 13px; font-weight: 650;
+  }
+  .filter-pill.active { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
+  .toolbar { align-items: center; margin: 4px 2px 12px; }
+  .toolbar h2 { font-size: 18px; }
+  .reset { color: #2563eb; font-size: 13px; }
+  .tour-list { gap: 12px; }
+  .card { padding: 9px; border-color: var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+  .photo-wrap { overflow: hidden; aspect-ratio: 16/9; border-radius: 17px; }
+  .photo-shade { height: 32%; opacity: .65; }
+  .days-badge {
+    top: 10px; left: 10px; padding: 6px 9px;
+    background: rgba(15,23,42,.62); border: 0; font-size: 11px;
+  }
+  .source-badge { right: 10px; bottom: 10px; padding: 5px 8px; background: rgba(37,99,235,.86); }
+  .card-body { padding: 14px 7px 5px; }
+  .card h3 { font-size: 18px; color: var(--text); }
+  .location { margin-top: 4px; font-size: 12.5px; }
+  .price { color: #1d4ed8; font-size: 18px; }
+  .facts {
+    gap: 5px; margin: 14px 0; padding: 11px;
+    border: 1px solid rgba(148,163,184,.09); border-radius: 14px; background: #f8fafc;
+  }
+  .fact-label { font-size: 9px; color: #94a3b8; }
+  .fact-value { font-size: 12.5px; }
+  .summary { white-space: pre-line; color: #64748b; line-height: 1.55; }
+  .tag { color: #526175; background: #f1f5f9; border-radius: 7px; }
+  details { border-color: rgba(148,163,184,.16); }
+  summary { color: #334155; }
+  .original { background: #f8fafc; }
+  .added { color: #94a3b8; }
+  .open {
+    min-height: 42px; border-radius: 12px; background: #2563eb;
+    box-shadow: 0 5px 12px rgba(37,99,235,.16);
+  }
+  .sheet { border: 1px solid var(--line); box-shadow: 0 -18px 50px rgba(15,23,42,.12); }
+  .option.selected { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
+  @media (min-width: 600px) {
+    .app { padding-top: 20px; }
+    .hero { padding-left: 8px; padding-right: 8px; }
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: var(--tg-theme-bg-color, #0b1120);
+      --surface: var(--tg-theme-secondary-bg-color, #111827);
+      --surface-strong: #111827;
+      --text: var(--tg-theme-text-color, #f1f5f9);
+      --muted: var(--tg-theme-hint-color, #94a3b8);
+      --line: rgba(148,163,184,.16);
+    }
+    body { background: #0b1120; }
+    .fresh-badge, .filter-pill.active, .option.selected {
+      color: #93c5fd; border-color: rgba(96,165,250,.24); background: rgba(37,99,235,.14);
+    }
+    .facts, .original { background: rgba(148,163,184,.07); }
+    .tag { color: #cbd5e1; background: rgba(148,163,184,.1); }
+  }
+  /* Adaptive Telegram theme layer */
+  :root,
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --ui-page: var(--tg-theme-bg-color, #f6f8fc);
+    --ui-surface: var(--tg-theme-secondary-bg-color, #ffffff);
+    --ui-surface-raised: #ffffff;
+    --ui-subtle: #f8fafc;
+    --ui-subtle-strong: #f1f5f9;
+    --ui-text: var(--tg-theme-text-color, #172033);
+    --ui-text-soft: var(--tg-theme-hint-color, #68758a);
+    --ui-text-faint: #94a3b8;
+    --ui-accent: var(--tg-theme-button-color, #2563eb);
+    --ui-accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --ui-accent-soft: #eff6ff;
+    --ui-accent-border: #bfdbfe;
+    --ui-border: rgba(100,116,139,.14);
+    --ui-divider: rgba(148,163,184,.16);
+    --ui-overlay: rgba(15,23,42,.38);
+    --ui-photo-badge: rgba(15,23,42,.64);
+    --ui-shadow: 0 7px 24px rgba(30,64,175,.055);
+    --ui-shadow-button: 0 5px 12px rgba(37,99,235,.16);
+    --ui-skeleton-a: #e8edf4;
+    --ui-skeleton-b: #f8fafc;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ui-page: var(--tg-theme-bg-color, #0b1120);
+    --ui-surface: var(--tg-theme-secondary-bg-color, #111827);
+    --ui-surface-raised: #151e2e;
+    --ui-subtle: #182235;
+    --ui-subtle-strong: #202c40;
+    --ui-text: var(--tg-theme-text-color, #f1f5f9);
+    --ui-text-soft: var(--tg-theme-hint-color, #a3aec0);
+    --ui-text-faint: #7f8ca1;
+    --ui-accent: var(--tg-theme-button-color, #3b82f6);
+    --ui-accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --ui-accent-soft: rgba(59,130,246,.14);
+    --ui-accent-border: rgba(96,165,250,.26);
+    --ui-border: rgba(148,163,184,.16);
+    --ui-divider: rgba(148,163,184,.15);
+    --ui-overlay: rgba(2,6,23,.68);
+    --ui-photo-badge: rgba(2,6,23,.72);
+    --ui-shadow: 0 9px 28px rgba(0,0,0,.18);
+    --ui-shadow-button: 0 5px 14px rgba(0,0,0,.18);
+    --ui-skeleton-a: #172033;
+    --ui-skeleton-b: #233047;
+  }
+  html, body { background: var(--ui-page); color: var(--ui-text); }
+  body {
+    background:
+      radial-gradient(circle at 50% -18%, color-mix(in srgb, var(--ui-accent) 9%, transparent), transparent 34%),
+      var(--ui-page);
+  }
+  .hero, h1, .brand, .toolbar h2, .card h3, summary { color: var(--ui-text); }
+  .hero p, .location, .summary, .result-note, .added, .detail-item span, .original { color: var(--ui-text-soft); }
+  .search-input, .filter-pill, .card, .option { color: var(--ui-text); background: var(--ui-surface); border-color: var(--ui-border); }
+  .search-input::placeholder { color: var(--ui-text-faint); }
+  .search-icon, .clear-search { color: var(--ui-text-faint); }
+  .search-input:focus {
+    border-color: var(--ui-accent-border);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ui-accent) 10%, transparent);
+  }
+  .fresh-badge, .filter-pill.active, .option.selected {
+    color: var(--ui-accent); background: var(--ui-accent-soft); border-color: var(--ui-accent-border);
+  }
+  .open { color: var(--ui-accent-text); background: var(--ui-accent); }
+  .reset, .price, summary::after { color: var(--ui-accent); }
+  .card { box-shadow: var(--ui-shadow); }
+  .facts, .original, .sheet-close { background: var(--ui-subtle); }
+  .facts { border-color: var(--ui-divider); }
+  .fact-label { color: var(--ui-text-faint); }
+  .tag { color: var(--ui-text-soft); background: var(--ui-subtle-strong); }
+  details { border-color: var(--ui-divider); }
+  .open { box-shadow: var(--ui-shadow-button); }
+  .sheet { color: var(--ui-text); background: var(--ui-surface-raised); border-color: var(--ui-border); }
+  .sheet-backdrop { background: var(--ui-overlay); }
+  .sheet-close { color: var(--ui-text); }
+  .handle { background: var(--ui-divider); }
+  .days-badge { background: var(--ui-photo-badge); }
+  .skeleton {
+    background: linear-gradient(90deg,var(--ui-skeleton-a) 25%,var(--ui-skeleton-b) 37%,var(--ui-skeleton-a) 63%);
+    background-size: 400% 100%;
+  }
+
+  .engagement { display:flex; align-items:center; gap:6px; margin-top:12px; padding-top:11px; border-top:1px solid var(--ui-divider); }
+  .engage-btn { min-width:44px; height:38px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 10px; border:0; border-radius:12px; color:var(--ui-text-soft); background:transparent; font:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:background .18s ease,color .18s ease,transform .18s ease; }
+  .engage-btn:hover { background:var(--ui-subtle); color:var(--ui-text); }
+  .engage-btn:active { transform:scale(.95); }
+  .engage-btn.liked { color:#ef476f; background:rgba(239,71,111,.10); }
+  .engage-btn svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  .engage-btn.liked .heart { fill:currentColor; }
+  .engage-spacer { flex:1; }
+  .comment-sheet { max-height:min(78vh,680px); display:flex; flex-direction:column; }
+  .comment-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:12px; padding:4px; border-radius:14px; background:var(--ui-subtle); }
+  .comment-tab { height:38px; border:0; border-radius:11px; color:var(--ui-text-soft); background:transparent; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
+  .comment-tab.active { color:var(--ui-accent-text); background:var(--ui-accent); box-shadow:var(--ui-shadow-button); }
+  .comment-list { min-height:120px; max-height:45vh; overflow:auto; display:flex; flex-direction:column; gap:10px; padding:12px 2px; }
+  .comment-item { display:grid; grid-template-columns:38px minmax(0,1fr); gap:10px; padding:11px 13px; border-radius:14px; background:var(--ui-subtle); }
+  .comment-avatar { width:38px; height:38px; display:grid; place-items:center; overflow:hidden; border-radius:50%; color:var(--ui-accent-text); background:var(--ui-accent); font-size:14px; font-weight:800; text-decoration:none; }
+  .comment-avatar img { width:100%; height:100%; object-fit:cover; }
+  .comment-body { min-width:0; }
+  .comment-author { min-width:0; color:var(--ui-text); text-decoration:none; }
+  .comment-author:hover { color:var(--ui-accent); }
+  .comment-username { display:block; overflow:hidden; color:var(--ui-text-soft); font-size:11px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+  .comment-meta { display:flex; justify-content:space-between; gap:10px; margin-bottom:4px; color:var(--ui-text-soft); font-size:11px; }
+  .comment-meta strong { color:var(--ui-text); font-size:12px; }
+  .comment-text { margin:0; color:var(--ui-text); font-size:14px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .comment-empty { padding:28px 12px; text-align:center; color:var(--ui-text-soft); }
+  .comment-form { display:flex; gap:8px; padding-top:12px; border-top:1px solid var(--ui-divider); }
+  .comment-input { flex:1; min-width:0; height:46px; padding:0 14px; border:1px solid var(--ui-border); border-radius:14px; color:var(--ui-text); background:var(--ui-page); font:inherit; outline:none; }
+  .comment-input:focus { border-color:var(--ui-accent); box-shadow:0 0 0 3px rgba(39,174,96,.12); }
+  .comment-send { min-width:46px; height:46px; padding:0 14px; border:0; border-radius:14px; color:white; background:var(--ui-accent); font:inherit; font-weight:800; cursor:pointer; }
+  .comment-send:disabled { opacity:.55; cursor:wait; }
+  .brand-actions { display:flex; align-items:center; gap:8px; }
+  .lang-switch { display:flex; padding:3px; border:1px solid var(--ui-border); border-radius:12px; background:var(--ui-subtle); }
+  .lang-btn { min-width:36px; height:28px; padding:0 8px; border:0; border-radius:9px; color:var(--ui-text-soft); background:transparent; font:inherit; font-size:11px; font-weight:800; cursor:pointer; }
+  .lang-btn.active { color:var(--ui-accent-text); background:var(--ui-accent); box-shadow:var(--ui-shadow-button); }
+  .range-form { display:grid; gap:14px; padding:10px 0 4px; }
+  .range-grid { display:grid; grid-template-columns:1fr 1fr; column-gap:18px; row-gap:14px; }
+  .range-field { display:grid; gap:6px; }
+  .range-field label { color:var(--ui-text-soft); font-size:12px; font-weight:700; }
+  .range-input { width:100%; height:48px; padding:0 12px; border:1px solid var(--ui-border); border-radius:14px; color:var(--ui-text); background:var(--ui-page); font:inherit; outline:none; color-scheme:light dark; }
+  .range-input:focus { border-color:var(--ui-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-accent) 12%,transparent); }
+  .range-actions { display:grid; grid-template-columns:1fr 1.4fr; gap:9px; margin-top:4px; }
+  .range-action { height:46px; border:1px solid var(--ui-border); border-radius:14px; color:var(--ui-text); background:var(--ui-subtle); font:inherit; font-weight:800; cursor:pointer; }
+  .range-action.primary { color:var(--ui-accent-text); border-color:transparent; background:var(--ui-accent); }
+  .load-more-sentinel { height:2px; margin:8px 0 24px; }
+  .page-loader { padding:18px; text-align:center; color:var(--ui-text-soft); }  @media (max-width: 420px) {
+    .range-grid { grid-template-columns:1fr; gap:14px; }
+    .range-field, .range-input { min-width:0; width:100%; }
+    .range-form > strong { margin-top:4px; }
+  }  .onboarding-backdrop { position:fixed; inset:0; z-index:100; display:none; place-items:center; padding:20px; background:color-mix(in srgb,var(--ui-page) 72%,transparent); backdrop-filter:blur(16px); }
+  .onboarding-backdrop.open { display:grid; }
+  .onboarding-card { position:relative; width:min(100%,430px); padding:24px; overflow:hidden; border:1px solid var(--ui-border); border-radius:26px; background:var(--ui-card); box-shadow:0 24px 80px rgba(12,29,50,.2); }
+  .onboarding-close { position:absolute; top:14px; right:14px; width:36px; height:36px; display:grid; place-items:center; border:1px solid var(--ui-border); border-radius:12px; color:var(--ui-text-soft); background:var(--ui-subtle); font-size:19px; cursor:pointer; }
+  .onboarding-kicker { color:var(--ui-accent); font-size:12px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+  .onboarding-card h2 { margin:8px 0 6px; color:var(--ui-text); font-size:25px; line-height:1.15; }
+  .onboarding-card p { margin:0; color:var(--ui-text-soft); line-height:1.5; }
+  .onboarding-progress { height:6px; margin:20px 0 24px; overflow:hidden; border-radius:99px; background:var(--ui-subtle); }
+  .onboarding-progress span { display:block; width:33.333%; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--ui-accent),#38bdf8); transition:width .28s ease; }
+  .onboarding-step { display:none; min-height:176px; overflow:hidden; }
+  .onboarding-step.active { display:block; animation:onboardingIn .25s ease; }
+  @keyframes onboardingIn { from { opacity:0; transform:translateX(8px); } }
+  .onboarding-label { display:block; margin-bottom:10px; color:var(--ui-text); font-size:17px; font-weight:850; }
+  .onboarding-input-wrap { display:flex; align-items:center; gap:10px; height:56px; padding:0 16px; border:1px solid var(--ui-border); border-radius:17px; background:var(--ui-page); }
+  .onboarding-input-wrap:focus-within { border-color:var(--ui-accent); box-shadow:0 0 0 4px color-mix(in srgb,var(--ui-accent) 12%,transparent); }
+  .onboarding-input-wrap span { color:var(--ui-text-soft); font-weight:800; }
+  .onboarding-input { min-width:0; width:100%; border:0; outline:0; color:var(--ui-text); background:transparent; font:inherit; font-size:16px; color-scheme:light dark; }
+  .destination-chips { display:flex; gap:8px; margin-top:12px; padding-bottom:3px; overflow:auto; scrollbar-width:none; }
+  .destination-chip { flex:0 0 auto; padding:9px 12px; border:1px solid var(--ui-border); border-radius:999px; color:var(--ui-text); background:var(--ui-subtle); font:inherit; font-size:13px; font-weight:750; cursor:pointer; }
+  .destination-chip.active { color:var(--ui-accent-text); border-color:var(--ui-accent); background:var(--ui-accent); }
+  .onboarding-hint { margin-top:10px !important; font-size:13px; }
+  .onboarding-actions { display:flex; gap:10px; margin-top:18px; }
+  .onboarding-btn { min-width:0; height:50px; padding:0 18px; flex:1 1 0; border:0; border-radius:15px; font:inherit; font-weight:850; cursor:pointer; }
+  .onboarding-btn.back { color:var(--ui-text); background:var(--ui-subtle); }
+  .onboarding-btn.next { color:var(--ui-accent-text); background:var(--ui-accent); }
+  .onboarding-btn:disabled { opacity:.45; cursor:not-allowed; }
+  .preference-clear { width:100%; min-height:44px; margin-top:12px; border:1px solid color-mix(in srgb,#ef4444 28%,var(--ui-border)); border-radius:14px; color:#dc2626; background:color-mix(in srgb,#ef4444 7%,var(--ui-card)); font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
+  .preference-clear[hidden] { display:none; }  @media (max-width:420px) {
+
+
+    .discovery-row { height:50px; grid-template-columns:minmax(0,1fr) 104px; gap:7px; }
+    .match-tool { width:104px; min-width:0; height:50px; padding:0 8px; font-size:11px; }
+    .search-input { height:50px; min-height:50px; padding-left:40px; font-size:13px; }
+    .onboarding-backdrop { align-items:end; padding:10px; }
+    .onboarding-card { width:100%; padding:22px 18px calc(18px + env(safe-area-inset-bottom)); border-radius:24px; }
+    .onboarding-card h2 { padding-right:38px; font-size:22px; }
+    .destination-chip { padding:9px 11px; }
+  }
+  .filter-builder-card { max-height:min(88vh,760px); overflow-y:auto; overscroll-behavior:contain; }
+  .filter-builder-form { display:grid; gap:18px; margin-top:18px; }
+  .builder-section { display:grid; gap:10px; }
+  .builder-label { color:var(--ui-text); font-size:14px; font-weight:850; }
+  .builder-options { display:flex; flex-wrap:wrap; gap:8px; }
+  .builder-option { position:relative; cursor:pointer; }
+  .builder-option input { position:absolute; opacity:0; pointer-events:none; }
+  .builder-option span { display:inline-flex; min-height:38px; align-items:center; padding:8px 12px; border:1px solid var(--ui-border); border-radius:13px; color:var(--ui-text); background:var(--ui-surface); font-size:13px; font-weight:750; transition:.16s ease; }
+  .builder-option input:checked + span { color:#fff; border-color:var(--ui-accent); background:var(--ui-accent); box-shadow:0 6px 16px color-mix(in srgb,var(--ui-accent) 28%,transparent); }
+  .builder-actions { position:sticky; bottom:-1px; display:grid; grid-template-columns:1fr 1.35fr; gap:10px; padding-top:12px; padding-bottom:2px; background:linear-gradient(180deg,transparent,var(--ui-surface-raised) 24%); }
+  @media(max-width:420px){ .filter-builder-card{padding:20px 16px calc(16px + env(safe-area-inset-bottom));}.builder-options{gap:7px}.builder-option span{min-height:36px;padding:7px 10px;font-size:12px} }
+
+
+  /* Polished all-filters panel */
+  .filter-builder-card { width:min(100%,560px); max-height:min(92dvh,780px); padding:24px 20px calc(18px + env(safe-area-inset-bottom)); border:1px solid color-mix(in srgb,var(--ui-border) 82%,transparent); border-radius:30px; scrollbar-width:none; box-shadow:0 26px 80px rgba(2,6,23,.28); }
+  .filter-builder-card::-webkit-scrollbar { display:none; }
+  .filter-builder-card .onboarding-kicker { display:inline-flex; width:max-content; align-items:center; gap:7px; padding:7px 10px; border-radius:999px; color:var(--ui-accent); background:color-mix(in srgb,var(--ui-accent) 11%,transparent); font-size:11px; letter-spacing:.04em; }
+  .filter-builder-card h2 { margin-top:10px; margin-bottom:5px; font-size:24px; line-height:1.1; }
+  .filter-builder-card #onboardingIntro { margin:0; color:var(--ui-text-soft); font-size:13px; line-height:1.45; }
+  .filter-builder-form { gap:12px; margin-top:18px; }
+  .builder-section { gap:11px; padding:14px; border:1px solid color-mix(in srgb,var(--ui-border) 78%,transparent); border-radius:19px; background:color-mix(in srgb,var(--ui-subtle) 64%,transparent); }
+  .builder-label { display:flex; align-items:center; gap:7px; font-size:13px; letter-spacing:.01em; }
+  .builder-options { gap:7px; }
+  .builder-option span { min-height:36px; padding:7px 11px; border-radius:12px; background:var(--ui-surface-raised); font-size:12px; box-shadow:0 1px 0 rgba(15,23,42,.03); }
+  .builder-option input:focus-visible + span { outline:3px solid color-mix(in srgb,var(--ui-accent) 28%,transparent); outline-offset:2px; }
+  .filter-builder-card .range-grid { gap:10px; }
+  .filter-builder-card .range-field { min-width:0; }
+  .filter-builder-card .range-field label { margin-bottom:6px; color:var(--ui-text-soft); font-size:11px; font-weight:750; }
+  .filter-builder-card .range-input { width:100%; min-width:0; height:44px; border-radius:13px; background:var(--ui-surface-raised); }
+  .builder-actions { z-index:2; margin:0 -4px -2px; padding:16px 4px 2px; background:linear-gradient(180deg,transparent 0%,var(--ui-surface-raised) 24%,var(--ui-surface-raised) 100%); }
+  .builder-actions .onboarding-btn { min-height:48px; border-radius:15px; font-weight:850; }
+  @media(max-width:420px){
+    .onboarding-backdrop { align-items:flex-end; padding:10px 10px 0; }
+    .filter-builder-card { max-height:94dvh; padding:21px 15px calc(14px + env(safe-area-inset-bottom)); border-radius:26px 26px 0 0; }
+    .filter-builder-card h2 { font-size:22px; }
+    .builder-section { padding:12px; border-radius:17px; }
+    .builder-option span { min-height:35px; padding:7px 10px; }
+  }
+
+
+  /* iOS Telegram WebView: keep native date controls inside their grid cells. */
+  .filter-builder-card, .filter-builder-form, .builder-section, .filter-builder-card .range-grid, .filter-builder-card .range-field { min-width:0; max-width:100%; box-sizing:border-box; }
+  .filter-builder-card .range-grid { width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:hidden; }
+  .filter-builder-card .range-field { width:100%; overflow:hidden; }
+  .filter-builder-card .range-input,
+  .filter-builder-card input[type="date"],
+  .filter-builder-card input[type="number"] { display:block; inline-size:100%; width:100%; min-inline-size:0; min-width:0; max-inline-size:100%; max-width:100%; box-sizing:border-box; overflow:hidden; -webkit-appearance:none; appearance:none; }
+  .filter-builder-card input[type="date"]::-webkit-date-and-time-value { min-width:0; width:100%; margin:0; text-align:left; }
+  .filter-builder-card input[type="date"]::-webkit-datetime-edit { min-width:0; max-width:100%; overflow:hidden; }
+  .filter-builder-card input[type="date"]::-webkit-calendar-picker-indicator { flex:0 0 auto; margin-left:2px; }
+  /* Remove the temporary rectangular iOS tap flash and preserve rounded shapes. */
+  button, .builder-option, .builder-option span { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  button { -webkit-appearance:none; appearance:none; background-clip:padding-box; }
+  .onboarding-btn, .match-tool, .hot-tab, .lang-btn, .builder-option span, .onboarding-close, .clear-search, .reset { overflow:hidden; transform:translateZ(0); backface-visibility:hidden; }
+  .onboarding-btn:active, .onboarding-btn:focus { border-radius:15px; }
+  .builder-option:active span, .builder-option input:active + span { border-radius:12px; }
+  @media(max-width:360px){ .filter-builder-card .range-grid { grid-template-columns:1fr; } }
+
+
+  /* Actions are standalone buttons; no rectangular sticky wrapper. */
+  .filter-builder-card .builder-actions { position:static; inset:auto; z-index:auto; margin:2px 0 0; padding:4px 0 0; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="hero">
+    <div class="brand-row">
+      <div class="brand"><img class="brand-mark" src="/assets/turbozor-logo.png" alt="TurBozor"><span>TurBozor</span></div>
+      <div class="brand-actions"><div class="lang-switch" aria-label="Til"><button class="lang-btn" data-lang="uz">UZ</button><button class="lang-btn" data-lang="ru">RU</button></div></div>
+    </div>
+    <h1>Eng yaxshi turlarni bir joyda toping</h1>
+    <p>Telegram, Instagram va saytlardagi tur e'lonlari bir joyda. Solishtiring, filtrlang va bevosita tur operatori bilan bog'laning.</p>
+  </header>
+
+  <div class="sticky-discovery">
+    <div class="discovery-row">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" class="search-input" type="search" placeholder="Davlat yoki shahar..." aria-label="Turlarni qidirish">
+        <button id="clearSearch" class="clear-search" aria-label="Qidiruvni tozalash">×</button>
+      </div>
+      <button id="matchTool" class="match-tool" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 1.5 4.2L18 9l-4.5 1.8L12 15l-1.5-4.2L6 9l4.5-1.8L12 3Z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/></svg><span id="matchToolLabel">Mos tur</span></button>
+    </div>
+
+  <section id="hotSection" class="hot-section">
+    <div class="hot-head"><h2 id="hotTitle">Issiq takliflar</h2></div>
+    <div class="hot-tabs" role="tablist">
+      <button class="hot-tab active" type="button" data-hot-tab="cheap">🔥 Arzon takliflar</button>
+      <button class="hot-tab" type="button" data-hot-tab="soon">⚡ Yaqinda uchadigan turlar</button>
+      <button class="hot-tab" type="button" data-hot-tab="family">👨‍👩‍👧 Oilaviy turlar</button>
+    </div>
+    <div id="hotTrack" class="hot-track"><div class="hot-empty">Yuklanmoqda...</div></div>
+  </section>
+
+  <section class="toolbar">
+    <div><h2>Saralangan turlar:</h2><div id="resultNote" class="result-note">Yuklanmoqda...</div></div>
+    <button id="reset" class="reset">Tozalash</button>
+  </section>
+  </div>
+
+  <section id="list" class="tour-list" aria-live="polite">
+    <div class="skeleton"></div><div class="skeleton"></div>
+  </section>
+  <div id="loadMoreSentinel" class="load-more-sentinel" aria-hidden="true"></div>
+  <button id="scrollTop" class="scroll-top" type="button" aria-label="Sahifa boshiga qaytish"><svg viewBox="0 0 24 24"><path d="m5 15 7-7 7 7"/></svg></button>
+</main>
+
+<div id="sheetBackdrop" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-head"><h3 id="sheetTitle">Filtrni tanlang</h3><button id="sheetClose" class="sheet-close" aria-label="Yopish">✕</button></div>
+    <div id="sheetOptions" class="option-grid"></div>
+  </div>
+</div>
+
+<div id="commentBackdrop" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="commentTitle">
+  <div class="sheet comment-sheet">
+    <div class="handle"></div>
+    <div class="sheet-head"><h3 id="commentTitle">Izohlar</h3><button id="commentClose" class="sheet-close" aria-label="Yopish">✕</button></div>
+    <div class="comment-tabs" role="tablist">
+      <button id="channelCommentTab" class="comment-tab active" type="button" data-comment-tab="comments" role="tab">Kanalga comment</button>
+      <button id="feedbackTab" class="comment-tab" type="button" data-comment-tab="feedback" role="tab">Feedback</button>
+    </div>
+    <div id="commentList" class="comment-list"></div>
+    <form id="commentForm" class="comment-form">
+      <input id="commentInput" class="comment-input" maxlength="500" placeholder="Izoh yozing..." autocomplete="off" required>
+      <button id="commentSend" class="comment-send" type="submit" aria-label="Yuborish">↑</button>
+    </form>
+  </div>
+</div>
+
+<div id="onboardingBackdrop" class="onboarding-backdrop" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+  <div class="onboarding-card filter-builder-card">
+    <button id="onboardingClose" class="onboarding-close" type="button" aria-label="Yopish">&#215;</button>
+    <div id="onboardingKicker" class="onboarding-kicker">Mos tur</div>
+    <h2 id="onboardingTitle">Barcha filterlar</h2>
+    <p id="onboardingIntro">Bir yoki bir nechta qiymatni tanlang.</p>
+    <form id="onboardingForm" class="filter-builder-form">
+      <section class="builder-section">
+        <div class="builder-label" id="builderCountryLabel">Davlatlar</div>
+        <div id="builderCountries" class="builder-options"></div>
+      </section>
+      <section class="builder-section">
+        <div class="builder-label" id="builderSourceLabel">Manbalar</div>
+        <div id="builderSources" class="builder-options"></div>
+      </section>
+      <section class="builder-section">
+        <div class="builder-label" id="builderChannelLabel">Kanallar</div>
+        <div id="builderChannels" class="builder-options"></div>
+      </section>
+      <section class="builder-section">
+        <div class="builder-label" id="builderPriceLabel">Narx</div>
+        <div class="range-grid"><div class="range-field"><label id="builderPriceFromLabel">Dan</label><input id="builderMinPrice" class="range-input" type="number" min="0" inputmode="numeric"></div><div class="range-field"><label id="builderPriceToLabel">Gacha</label><input id="builderMaxPrice" class="range-input" type="number" min="0" inputmode="numeric"></div></div>
+      </section>
+      <section class="builder-section">
+        <div class="builder-label" id="builderDepartureLabel">Ketish sanasi</div>
+        <div class="range-grid"><div class="range-field"><label id="builderDepartureFromLabel">Dan</label><input id="builderDepartureFrom" class="range-input" type="date"></div><div class="range-field"><label id="builderDepartureToLabel">Gacha</label><input id="builderDepartureTo" class="range-input" type="date"></div></div>
+      </section>
+      <section class="builder-section">
+        <div class="builder-label" id="builderReturnLabel">Kelish sanasi</div>
+        <div class="range-grid"><div class="range-field"><label id="builderReturnFromLabel">Dan</label><input id="builderReturnFrom" class="range-input" type="date"></div><div class="range-field"><label id="builderReturnToLabel">Gacha</label><input id="builderReturnTo" class="range-input" type="date"></div></div>
+      </section>
+      <div class="builder-actions"><button id="preferenceClear" class="onboarding-btn back" type="button">Tozalash</button><button id="onboardingNext" class="onboarding-btn next" type="submit">Qo&#8216;llash</button></div>
+    </form>
+  </div>
+</div>
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+let viewerId = localStorage.getItem("tourViewerId");
+if (!viewerId) {
+  viewerId = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, "_");
+  localStorage.setItem("tourViewerId", viewerId);
+}
+function apiHeaders(extra) {
+  return Object.assign({
+    "X-Telegram-Init-Data": (tg && tg.initData) || "",
+    "X-Viewer-ID": viewerId
+  }, extra || {});
+}
+function apiFetch(url, options) {
+  options = options || {};
+  options.headers = apiHeaders(options.headers);
+  return fetch(url, options);
+}
+const previewTheme = new URLSearchParams(location.search).get("theme");
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme === "dark" ? "dark" : "light";
+}
+if (tg) { tg.ready(); tg.expand(); }
+if (previewTheme === "light" || previewTheme === "dark") {
+  applyTheme(previewTheme);
+} else if (tg) {
+  applyTheme(tg.colorScheme);
+  tg.onEvent("themeChanged", function () { applyTheme(tg.colorScheme); });
+} else if (window.matchMedia) {
+  const scheme = window.matchMedia("(prefers-color-scheme: dark)");
+  applyTheme(scheme.matches ? "dark" : "light");
+  scheme.addEventListener("change", function (event) { applyTheme(event.matches ? "dark" : "light"); });
+}
+
+const state = {
+  q:"", country:"", source:"", channel:"", selectedCountries:[], selectedSources:[], selectedChannels:[], minPrice:"", maxPrice:"",
+  departureFrom:"", departureTo:"", returnFrom:"", returnTo:"",
+  lang:localStorage.getItem("tourLang") || "uz", activeTourId:null, activeCommentTab:"comments", offset:0, pageSize:20, total:0, loading:false, hasMore:false,
+  filters:{ countries:[], sources:[], channels:[] }, preferences:null, personalized:false, onboardingStep:0, hotTab:"cheap", hotOffers:{cheap:[],soon:[],family:[]}
+};
+const i18n = {
+  uz:{ hero:"Eng yaxshi turlarni bir joyda toping", intro:"Telegram, Instagram va saytlardagi tur e'lonlari bir joyda. Solishtiring, filtrlang va bevosita tur operatori bilan bog'laning.", search:"Davlat, shahar yoki tur nomi...", selected:"Saralangan turlar:", clear:"Tozalash", loading:"Yuklanmoqda...", tours:"ta tur", countries:"Barcha davlatlar", sources:"Barcha manbalar", channels:"Barcha kanallar", countryTitle:"Davlatni tanlang", sourceTitle:"Manbani tanlang", channelTitle:"Kanalni tanlang", price:"Narx", departure:"Ketish sanasi", returnDate:"Kelish sanasi", dates:"Safar sanalari", datesSelected:"Sanalar tanlangan", commentsUnavailable:"Kanalda comment yozish imkoni mavjud emas", from:"Dan", to:"Gacha", apply:"Qo‘llash", noPrice:"Narx aniqlanmagan", unspecified:"Ko‘rsatilmagan", days:"kun qoldi", departureFact:"Jo‘nash", duration:"Davomiylik", meal:"Ovqatlanish", details:"Batafsil ma’lumot", hotel:"Mehmonxona", departureCity:"Jo‘nash shahri", nights:"Kechalar", contact:"Bog‘lanish", booking:"Bron sharti", channelOpen:"Kanalga o‘tish →", empty:"Mos tur topilmadi", emptyHint:"Filterlarni o‘zgartirib ko‘ring.", comments:"Izohlar", commentPlaceholder:"Izoh yozing..." },
+  ru:{ hero:"Лучшие туры в одном месте", intro:"Туры из Telegram, Instagram и сайтов в одном приложении. Сравнивайте, фильтруйте и связывайтесь с туроператором.", search:"Страна, город или название тура...", selected:"Подобранные туры:", clear:"Очистить", loading:"Загрузка...", tours:"туров", countries:"Все страны", sources:"Все источники", channels:"Все каналы", countryTitle:"Выберите страну", sourceTitle:"Выберите источник", channelTitle:"Выберите канал", price:"Цена", departure:"Дата вылета", returnDate:"Дата возвращения", dates:"Даты поездки", datesSelected:"Даты выбраны", commentsUnavailable:"В канале нельзя оставлять комментарии", from:"От", to:"До", apply:"Применить", noPrice:"Цена не указана", unspecified:"Не указано", days:"дней осталось", departureFact:"Вылет", duration:"Длительность", meal:"Питание", details:"Подробнее", hotel:"Отель", departureCity:"Город вылета", nights:"Ночей", contact:"Контакты", booking:"Условия брони", channelOpen:"Открыть канал →", empty:"Подходящих туров нет", emptyHint:"Попробуйте изменить фильтры.", comments:"Комментарии", commentPlaceholder:"Напишите комментарий..." }
+};
+Object.assign(i18n.uz, { tourPackage:"Turpaket", routeUnknown:"Yo‘nalish aniqlanmagan", day:"kun", night:"kecha", returnLabel:"Qaytish sanasi", views:"Ko‘rishlar", like:"Yoqtirish", share:"Ulashish", filterTitle:"Filtrni tanlang", close:"Yopish", send:"Yuborish", loadError:"Ma’lumotlarni yuklab bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.", commentsEmpty:"Hozircha izoh yo‘q. Birinchi bo‘lib yozing.", commentsLoadError:"Izohlarni yuklab bo‘lmadi.", commentSendError:"Izoh yuborilmadi. Qayta urinib ko‘ring.", sharedTour:"Ulashilgan tur", loadingComments:"Yuklanmoqda...", shareMessage:"Ushbu turni TurBozor orqali tomosha qiling" });
+Object.assign(i18n.ru, { tourPackage:"Турпакет", routeUnknown:"Направление не указано", day:"дней", night:"ночей", returnLabel:"Дата возвращения", views:"Просмотры", like:"Нравится", share:"Поделиться", filterTitle:"Выберите фильтр", close:"Закрыть", send:"Отправить", loadError:"Не удалось загрузить данные. Попробуйте ещё раз позже.", commentsEmpty:"Комментариев пока нет. Оставьте первый комментарий.", commentsLoadError:"Не удалось загрузить комментарии.", commentSendError:"Не удалось отправить комментарий. Попробуйте ещё раз.", sharedTour:"Отправленный тур", loadingComments:"Загрузка...", shareMessage:"Посмотрите этот тур в TurBozor" });function tr(key) { return (i18n[state.lang] && i18n[state.lang][key]) || i18n.uz[key] || key; }
+Object.assign(i18n.uz, { showMore:"Batafsil ko‘rish", showLess:"Yopish", channelComment:"Kanalga comment", feedback:"Feedback", feedbackPlaceholder:"Fikringizni yozing...", feedbackEmpty:"Hozircha feedback yo‘q.", feedbackSendError:"Feedback yuborilmadi. Qayta urinib ko‘ring.", cityStay:"Shaharda qolish" });
+Object.assign(i18n.ru, { showMore:"Показать подробнее", showLess:"Свернуть", channelComment:"Комментарий в канал", feedback:"Обратная связь", feedbackPlaceholder:"Напишите ваше мнение...", feedbackEmpty:"Отзывов пока нет.", feedbackSendError:"Не удалось отправить отзыв. Попробуйте ещё раз.", cityStay:"Проживание в городе" });
+Object.assign(i18n.uz, { forYou:"Siz uchun", onboardingKicker:"Shaxsiy tanlov", onboardingTitle:"Sizga mos turni topamiz", onboardingIntro:"Uchta qisqa javob — va bosh sahifa sizning didingizga moslashadi.", destinationQuestion:"Qayerga borishni xohlaysiz?", destinationPlaceholder:"Masalan, Turkiya", budgetQuestion:"Budjetingiz qancha?", budgetHint:"Bir kishi uchun maksimal budjetni kiriting.", dateQuestion:"Taxminiy sana qaysi?", dateHint:"Shu sanaga eng yaqin turlar yuqoriroqda chiqadi.", back:"Orqaga", next:"Keyingi", showTours:"Turlarni ko‘rsatish", saving:"Saqlanmoqda...", onboardingError:"Javoblarni saqlab bo‘lmadi. Qayta urinib ko‘ring." });
+Object.assign(i18n.ru, { forYou:"Для вас", onboardingKicker:"Персональный подбор", onboardingTitle:"Найдём тур для вас", onboardingIntro:"Три коротких ответа — и главная страница подстроится под ваши интересы.", destinationQuestion:"Куда вы хотите поехать?", destinationPlaceholder:"Например, Турция", budgetQuestion:"Какой у вас бюджет?", budgetHint:"Укажите максимальный бюджет на одного человека.", dateQuestion:"Когда планируете поездку?", dateHint:"Туры с ближайшими датами будут показаны выше.", back:"Назад", next:"Далее", showTours:"Показать туры", saving:"Сохраняем...", onboardingError:"Не удалось сохранить ответы. Попробуйте ещё раз." });Object.assign(i18n.uz, { matchTool:"Mos tur", editMatch:"Tanlovim" });
+Object.assign(i18n.ru, { matchTool:"Подобрать", editMatch:"Мой выбор" });
+Object.assign(i18n.uz, { clearPreference:"Shaxsiy filtrni o‘chirish" });
+Object.assign(i18n.uz, { allFilters:"Barcha filterlar", filterHint:"Bir yoki bir nechta qiymatni tanlang.", countryPlural:"Davlatlar", sourcePlural:"Manbalar", channelPlural:"Kanallar", selectedFilters:"ta filter tanlangan" });
+Object.assign(i18n.ru, { allFilters:"Все фильтры", filterHint:"Выберите одно или несколько значений.", countryPlural:"Страны", sourcePlural:"Источники", channelPlural:"Каналы", selectedFilters:"Выбрано" });
+Object.assign(i18n.ru, { clearPreference:"Удалить персональный фильтр" });Object.assign(i18n.uz, { hotOffers:"Issiq takliflar", hotCheap:"🔥 Arzon takliflar", hotSoon:"⚡ Yaqinda uchadigan turlar", hotFamily:"👨‍👩‍👧 Oilaviy turlar", hotEmpty:"Bu bo‘limda hozircha tur yo‘q" });
+Object.assign(i18n.ru, { hotOffers:"Горячие предложения", hotCheap:"🔥 Недорогие туры", hotSoon:"⚡ Ближайшие вылеты", hotFamily:"👨‍👩‍👧 Семейные туры", hotEmpty:"В этом разделе пока нет туров" });const labels = {
+  country:{ emptyKey:"countries", titleKey:"countryTitle", key:"countries" },
+  source:{ emptyKey:"sources", titleKey:"sourceTitle", key:"sources" },
+  channel:{ emptyKey:"channels", titleKey:"channelTitle", key:"channels" }
+};
+function includeName(value) {
+  if (state.lang !== "ru") return value;
+  const ru = {
+    "aviachipta":"Авиаперелёт", "mehmonxona":"Проживание", "transfer":"Трансфер",
+    "sug'urta":"Медицинская страховка", "ovqatlanish":"Питание", "ekskursiya":"Экскурсия"
+  };
+  return ru[value] || value;
+}function locationName(value) {
+  if (!value || state.lang !== "ru") return value;
+  const ru = {
+    "Turkiya":"Турция", "Trabzon":"Трабзон", "Uzungol":"Узунгёль",
+    "Xitoy":"Китай", "BAA":"ОАЭ", "Misr":"Египет", "Tailand":"Таиланд",
+    "Vetnam":"Вьетнам", "Gruziya":"Грузия", "Ozarbayjon":"Азербайджан",
+    "Maldiv orollari":"Мальдивы", "Shri-Lanka":"Шри-Ланка",
+    "Saudiya Arabistoni":"Саудовская Аравия", "Indoneziya":"Индонезия",
+    "Gretsiya":"Греция", "Kipr":"Кипр"
+  };
+  return ru[value] || value;
+}function sourceName(value) { return value === "web" ? (state.lang === "ru" ? "Сайт" : "Web sayt") : (value === "instagram" ? "Instagram" : value === "telegram" ? "Telegram" : value); }
+const list = document.getElementById("list");
+const qEl = document.getElementById("q");
+const backdrop = document.getElementById("sheetBackdrop");
+let activeFilter = null;
+let debounceTimer;
+
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function(c) {
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+function money(amount, currency) {
+  if (amount == null) return tr("noPrice");
+  const formatted = new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 }).format(amount);
+  const signs = { USD:"$", EUR:"€", UZS:"so‘m", RUB:"₽" };
+  return currency === "USD" || currency === "EUR" ? (signs[currency] + formatted) : (formatted + " " + (signs[currency] || currency || ""));
+}
+function formatDate(value) {
+  if (!value) return "Ko‘rsatilmagan";
+  const parts = value.split("-");
+  const months = ["yan","fev","mar","apr","may","iyun","iyul","avg","sen","okt","noy","dek"];
+  const month = months[Number(parts[1]) - 1] || parts[1];
+  return Number(parts[2]) + "-" + month + ", " + parts[0];
+}
+function addedTime(value) {
+  if (!value) return "—";
+  const hasZone = /Z$|[+-]\d{2}:\d{2}$/.test(value);
+  const date = new Date(hasZone ? value : value + "Z");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  }).formatToParts(date).reduce(function(acc, part) {
+    acc[part.type] = part.value; return acc;
+  }, {});
+  return parts.year + "-" + parts.month + "-" + parts.day + " | " + parts.hour + ":" + parts.minute;
+}
+function daysUntil(value) {
+  if (!value) return "";
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(value + "T00:00:00");
+  return Math.ceil((target - today) / 86400000) + " " + tr("days");
+}
+function detail(label, value) {
+  if (value == null || value === "") return "";
+  return '<div class="detail-item"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></div>';
+}
+function card(t) {
+  const d = t.details || {};
+  const stats = t.stats || { views:0, likes:0, comments:0, liked:false };
+  const country = locationName(t.country) || tr("routeUnknown");
+  const city = locationName(t.city) || tr("routeUnknown");
+  const tags = (t.includes || []).slice(0, 8).map(function(x) {
+    return '<span class="tag">✓ ' + escapeHtml(includeName(x)) + '</span>';
+  }).join("");
+  const hotel = d.hotel_name ? d.hotel_name + (d.hotel_stars ? " " + d.hotel_stars + "★" : "") : "";
+  const duration = t.duration_days ? t.duration_days + " " + tr("day") : (d.nights ? d.nights + " " + tr("night") : "—");
+  const photoVisual = t.photo_url
+    ? '<img class="tour-photo" src="' + escapeHtml(t.photo_url) + '" alt="' + escapeHtml(t.title) + '" loading="lazy">'
+    : '<div class="photo-placeholder" aria-hidden="true"><img src="/assets/turbozor-channel-icon.png" alt=""></div>';
+  const photo = '<div class="photo-wrap">' + photoVisual + '<div class="photo-shade"></div><span class="days-badge">' + escapeHtml(daysUntil(t.departure_date)) + '</span><span class="source-badge">@' + escapeHtml(t.channel) + '</span></div>';
+  const importantDetails =
+      detail(tr("hotel"), hotel) +
+      detail(tr("returnLabel"), t.return_date ? formatDate(t.return_date) : "") +
+      detail(tr("cityStay"), d.city_nights ? d.city_nights + " " + tr("night") : "") +
+      detail(tr("departureCity"), d.departure_city) +
+      detail(tr("booking"), d.booking_note) +
+      detail(tr("contact"), t.contact);
+  const originalMessage = t.original_text || t.summary || "";
+  const hasMore = Boolean(importantDetails || tags || originalMessage);
+  const moreBlock = hasMore
+    ? '<details class="more-details"><summary><span class="more-open-label">' + tr("showMore") + '</span><span class="more-close-label">' + tr("showLess") + '</span></summary><div class="more-content">' +
+        (importantDetails ? '<div class="detail-grid">' + importantDetails + '</div>' : '') +
+        (tags ? '<div class="tags">' + tags + '</div>' : '') +
+        (originalMessage ? '<div class="original">' + escapeHtml(originalMessage) + '</div>' : '') +
+      '</div></details>'
+    : '';
+  return '<article class="card" data-tour-id="' + t.id + '">' + photo +
+    '<div class="card-body">' +
+    '<div class="card-top"><div class="destination"><div class="destination-country">' + escapeHtml(country) + '</div><div class="destination-city">📍 ' + escapeHtml(city) + '</div></div><div class="price">' + escapeHtml(money(t.price_amount,t.price_currency)) + '</div></div>' +
+    '<div class="facts"><div class="fact"><div class="fact-label">' + tr("departureFact") + '</div><div class="fact-value">' + escapeHtml(formatDate(t.departure_date)) + '</div></div><div class="fact"><div class="fact-label">' + tr("duration") + '</div><div class="fact-value">' + escapeHtml(duration) + '</div></div><div class="fact"><div class="fact-label">' + tr("meal") + '</div><div class="fact-value">' + escapeHtml(d.meal_plan || "—") + '</div></div></div>' +
+    moreBlock +
+    '<div class="engagement">' +
+      '<button class="engage-btn view-count" type="button" aria-label="' + tr("views") + '"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>' + stats.views + '</span></button>' +
+      '<button class="engage-btn like-btn ' + (stats.liked ? 'liked' : '') + '" type="button" aria-label="' + tr("like") + '"><svg class="heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.7-7.5 1.1-1.1a5.5 5.5 0 0 0 0-7.8Z"/></svg><span>' + stats.likes + '</span></button>' +
+      '<button class="engage-btn comment-btn" type="button" aria-label="' + tr("comments") + '"><svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg><span>' + stats.comments + '</span></button>' +
+      '<span class="engage-spacer"></span><button class="engage-btn share-btn" type="button" aria-label="' + tr("share") + '"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg></button>' +
+    '</div>' +
+    '<div class="card-footer"><div class="added">' + escapeHtml(addedTime(t.created_at)) + '</div>' +
+    (t.url ? '<a class="open" href="#" data-url="' + escapeHtml(t.url) + '">' + tr("channelOpen") + '</a>' : '') +
+    '</div></div></article>';
+}async function syncInteractions(ids) {
+  if (!ids.length) return;
+  try {
+    const response = await apiFetch("/api/interactions?tour_ids=" + ids.join(","));
+    if (!response.ok) return;
+    const data = await response.json();
+    Object.keys(data.items || {}).forEach(function(id) { updateCardStats(Number(id), data.items[id]); });
+  } catch (error) {}
+}
+
+function hotCard(item) {
+  const route = [locationName(item.country), locationName(item.city)].filter(Boolean).join(" · ") || tr("routeUnknown");
+  const image = item.photo_url ? '<img src="' + escapeHtml(item.photo_url) + '" alt="" loading="lazy">' : '';
+  return '<button class="hot-card" type="button" data-hot-tour-id="' + item.id + '">' + image +
+    '<span class="hot-card-shade"></span><span class="hot-card-body"><span class="hot-card-route">' + escapeHtml(route) + '</span>' +
+    '<span class="hot-card-meta"><span>' + escapeHtml(formatDate(item.departure_date)) + '</span><span class="hot-card-price">' + escapeHtml(money(item.price_amount,item.price_currency)) + '</span></span></span></button>';
+}
+function renderHotOffers() {
+  document.getElementById("hotTitle").textContent = tr("hotOffers");
+  const tabKeys = {cheap:"hotCheap",soon:"hotSoon",family:"hotFamily"};
+  const scrollTopButton = document.getElementById("scrollTop");
+let scrollTopTicking = false;
+window.addEventListener("scroll", function() {
+  if (scrollTopTicking) return;
+  scrollTopTicking = true;
+  requestAnimationFrame(function() {
+    scrollTopButton.classList.toggle("show", window.scrollY > 420);
+    scrollTopTicking = false;
+  });
+}, {passive:true});
+scrollTopButton.addEventListener("click", function() { window.scrollTo({top:0,behavior:"smooth"}); });document.querySelectorAll(".hot-tab").forEach(function(button) {
+    button.textContent = tr(tabKeys[button.dataset.hotTab]);
+    button.classList.toggle("active", button.dataset.hotTab === state.hotTab);
+  });
+  const items = state.hotOffers[state.hotTab] || [];
+  document.getElementById("hotTrack").innerHTML = items.length ? items.map(hotCard).join("") : '<div class="hot-empty">' + tr("hotEmpty") + '</div>';
+}
+async function loadHotOffers() {
+  try {
+    const response = await apiFetch("/api/hot-offers?limit=10");
+    if (!response.ok) throw new Error("Hot offers");
+    state.hotOffers = await response.json(); renderHotOffers();
+  } catch (error) {
+    document.getElementById("hotTrack").innerHTML = '<div class="hot-empty">' + tr("loadError") + '</div>';
+  }
+}
+function hasDiscoveryFilters() {
+  return Boolean(state.q || state.selectedCountries.length || state.selectedSources.length || state.selectedChannels.length || state.minPrice || state.maxPrice || state.departureFrom || state.departureTo || state.returnFrom || state.returnTo);
+}
+function isPersonalizedView() { return false; }
+function updateToolbarHeading() {
+  const heading = document.querySelector(".toolbar h2");
+  if (heading) heading.textContent = tr("selected");
+}
+function selectedFilterCount() {
+  return state.selectedCountries.length + state.selectedSources.length + state.selectedChannels.length + [state.minPrice,state.maxPrice,state.departureFrom,state.departureTo,state.returnFrom,state.returnTo].filter(Boolean).length;
+}
+function builderOptions(values, selected, type) {
+  return (values || []).map(function(value) {
+    const label = type === "source" ? sourceName(value) : (type === "channel" ? "@" + value : locationName(value));
+    return '<label class="builder-option"><input type="checkbox" data-builder="' + type + '" value="' + escapeHtml(value) + '" ' + (selected.includes(value) ? 'checked' : '') + '><span>' + escapeHtml(label) + '</span></label>';
+  }).join("");
+}
+function renderBuilderOptions() {
+  document.getElementById("builderCountries").innerHTML = builderOptions(state.filters.countries, state.selectedCountries, "country");
+  document.getElementById("builderSources").innerHTML = builderOptions(state.filters.sources, state.selectedSources, "source");
+  document.getElementById("builderChannels").innerHTML = builderOptions(state.filters.channels, state.selectedChannels, "channel");
+}
+function renderOnboarding() { renderBuilderOptions(); }
+function applyOnboardingLanguage() {
+  document.getElementById("onboardingKicker").textContent = tr("matchTool");
+  document.getElementById("onboardingTitle").textContent = tr("allFilters");
+  document.getElementById("onboardingIntro").textContent = tr("filterHint");
+  document.getElementById("builderCountryLabel").textContent = "\uD83C\uDF0D " + tr("countryPlural");
+  document.getElementById("builderSourceLabel").textContent = "\u25C9 " + tr("sourcePlural");
+  document.getElementById("builderChannelLabel").textContent = "\u2708\uFE0F " + tr("channelPlural");
+  document.getElementById("builderPriceLabel").textContent = "\uD83D\uDCB3 " + tr("price");
+  document.getElementById("builderDepartureLabel").textContent = "\uD83D\uDEEB " + tr("departure");
+  document.getElementById("builderReturnLabel").textContent = "\uD83D\uDEEC " + tr("returnDate");
+  ["builderPriceFromLabel","builderDepartureFromLabel","builderReturnFromLabel"].forEach(function(id){document.getElementById(id).textContent=tr("from");});
+  ["builderPriceToLabel","builderDepartureToLabel","builderReturnToLabel"].forEach(function(id){document.getElementById(id).textContent=tr("to");});
+  document.getElementById("preferenceClear").textContent = tr("clear");
+  document.getElementById("onboardingNext").textContent = tr("apply");
+  renderBuilderOptions();
+}
+function openOnboarding() {
+  applyOnboardingLanguage();
+  document.getElementById("builderMinPrice").value=state.minPrice;
+  document.getElementById("builderMaxPrice").value=state.maxPrice;
+  document.getElementById("builderDepartureFrom").value=state.departureFrom;
+  document.getElementById("builderDepartureTo").value=state.departureTo;
+  document.getElementById("builderReturnFrom").value=state.returnFrom;
+  document.getElementById("builderReturnTo").value=state.returnTo;
+  document.getElementById("onboardingBackdrop").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+async function initializePersonalization() { applyLanguage(); load(); }
+function closeOnboarding() { document.getElementById("onboardingBackdrop").classList.remove("open"); document.body.style.overflow=""; }
+async function load(reset) {
+  if (reset !== false) {
+    state.offset = 0; state.total = 0; state.hasMore = true;
+    list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+  }
+  if (state.loading || !state.hasMore) return;
+  state.loading = true;
+  const params = new URLSearchParams({ limit:String(state.pageSize), offset:String(state.offset), include_original:"true" });
+  state.selectedCountries.forEach(function(value) { params.append("country", value); });
+  state.selectedSources.forEach(function(value) { params.append("source", value); });
+  state.selectedChannels.forEach(function(value) { params.append("channel", value); });
+  ["q","minPrice","maxPrice","departureFrom","departureTo","returnFrom","returnTo"].forEach(function(k) {
+    if (state[k]) params.set(k.replace(/[A-Z]/g, function(x) { return "_" + x.toLowerCase(); }), state[k]);
+  });
+  if (state.offset > 0) list.insertAdjacentHTML("beforeend", '<div id="pageLoader" class="page-loader">' + tr("loading") + '</div>');
+  if (reset !== false && (state.selectedCountries.length || state.minPrice || state.maxPrice)) {
+    apiFetch("/api/activity/search", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({country:state.selectedCountries[0] || null, min_budget:Number(state.minPrice) || null, max_budget:Number(state.maxPrice) || null})
+    }).catch(function() {});
+  }
+  try {
+    const endpoint = isPersonalizedView() ? "/api/recommendations?" : "/api/tours?";
+    const response = await apiFetch(endpoint + params.toString());
+    if (!response.ok) throw new Error("API");
+    const data = await response.json();
+    const loader = document.getElementById("pageLoader"); if (loader) loader.remove();
+    state.total = data.count; state.offset += data.items.length; state.hasMore = data.next_offset !== null; updateToolbarHeading();
+    document.getElementById("resultNote").textContent = data.count + " " + tr("tours");
+    if (reset !== false) {
+      list.innerHTML = data.items.length ? data.items.map(card).join("") : '<div class="empty"><div class="empty-icon">🧭</div><strong>' + tr("empty") + '</strong><br>' + tr("emptyHint") + '</div>';
+    } else {
+      list.insertAdjacentHTML("beforeend", data.items.map(card).join(""));
+    }
+    observeCards();
+    syncInteractions(data.items.map(function(item) { return item.id; }));
+  } catch (error) {
+    const loader = document.getElementById("pageLoader"); if (loader) loader.remove();
+    if (reset !== false) list.innerHTML = '<div class="error">' + tr("loadError") + '</div>';
+  } finally { state.loading = false; }
+}
+
+let viewObserver;
+let pendingViews = new Set();
+let viewFlushTimer;
+function flushViews() {
+  if (!pendingViews.size) return;
+  const ids = Array.from(pendingViews).slice(0, 50);
+  ids.forEach(function(id) { pendingViews.delete(id); });
+  apiFetch("/api/views/batch", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({tour_ids:ids}) }).catch(function() {});
+}
+function observeCards() {
+  if (!viewObserver) viewObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting || entry.intersectionRatio < .6) return;
+      const cardEl = entry.target;
+      viewObserver.unobserve(cardEl);
+      pendingViews.add(Number(cardEl.dataset.tourId));
+      clearTimeout(viewFlushTimer); viewFlushTimer = setTimeout(flushViews, 1200);
+    });
+  }, { threshold:[.6] });
+  document.querySelectorAll(".card[data-tour-id]").forEach(function(cardEl) { if (!cardEl.dataset.observed) { cardEl.dataset.observed = "1"; viewObserver.observe(cardEl); } });
+}
+const loadMoreObserver = new IntersectionObserver(function(entries) {
+  if (entries[0].isIntersecting && state.hasMore && !state.loading) load(false);
+}, { rootMargin:"500px 0px" });
+loadMoreObserver.observe(document.getElementById("loadMoreSentinel"));
+const commentBackdrop = document.getElementById("commentBackdrop");
+const commentList = document.getElementById("commentList");
+function commentMarkup(item) {
+  const profile = item.profile_url || "#";
+  const initial = (item.display_name || "A").trim().charAt(0).toUpperCase();
+  const avatar = item.photo_url ? '<img src="' + escapeHtml(item.photo_url) + '" alt="" loading="lazy">' : escapeHtml(initial);
+  const username = item.username ? '<span class="comment-username">@' + escapeHtml(item.username) + '</span>' : '';
+  return '<div class="comment-item"><a class="comment-avatar" href="' + escapeHtml(profile) + '" data-profile="' + escapeHtml(profile) + '" aria-label="Profilni ochish">' + avatar + '</a><div class="comment-body"><div class="comment-meta"><a class="comment-author" href="' + escapeHtml(profile) + '" data-profile="' + escapeHtml(profile) + '"><strong>' + escapeHtml(item.display_name) + '</strong>' + username + '</a><span>' + escapeHtml(addedTime(item.created_at)) + '</span></div><p class="comment-text">' + escapeHtml(item.text) + '</p></div></div>';
+}
+async function loadCommentTab() {
+  const tourId = state.activeTourId;
+  if (!tourId) return;
+  const isFeedback = state.activeCommentTab === "feedback";
+  const input = document.getElementById("commentInput");
+  const send = document.getElementById("commentSend");
+  commentList.innerHTML = '<div class="comment-empty">' + tr("loadingComments") + '</div>';
+  input.placeholder = tr(isFeedback ? "feedbackPlaceholder" : "commentPlaceholder");
+  input.disabled = send.disabled = false;
+  try {
+    const response = await apiFetch("/api/tours/" + tourId + "/" + (isFeedback ? "feedback" : "comments"));
+    if (!response.ok) throw new Error("Load");
+    const data = await response.json();
+    if (!isFeedback && !data.comment_available) {
+      input.disabled = send.disabled = true;
+      commentList.innerHTML = '<div class="comment-empty">' + escapeHtml(tr("commentsUnavailable")) + '</div>';
+      return;
+    }
+    const emptyKey = isFeedback ? "feedbackEmpty" : "commentsEmpty";
+    commentList.innerHTML = data.items.length ? data.items.map(commentMarkup).join("") : '<div class="comment-empty">' + tr(emptyKey) + '</div>';
+    commentList.scrollTop = commentList.scrollHeight;
+  } catch (error) {
+    commentList.innerHTML = '<div class="comment-empty">' + tr("commentsLoadError") + '</div>';
+  }
+}
+function selectCommentTab(tab) {
+  state.activeCommentTab = tab;
+  document.querySelectorAll("[data-comment-tab]").forEach(function(button) {
+    const active = button.dataset.commentTab === tab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  loadCommentTab();
+}
+async function openComments(tourId) {
+  state.activeTourId = tourId;
+  state.activeCommentTab = "comments";
+  commentBackdrop.classList.add("open");
+  document.body.style.overflow = "hidden";
+  document.querySelectorAll("[data-comment-tab]").forEach(function(button) {
+    button.classList.toggle("active", button.dataset.commentTab === "comments");
+  });
+  await loadCommentTab();
+}
+function closeComments() {
+  commentBackdrop.classList.remove("open");
+  document.body.style.overflow = "";
+  state.activeTourId = null;
+}function updateCardStats(tourId, stats) {
+  const cardEl = document.querySelector('.card[data-tour-id="' + tourId + '"]');
+  if (!cardEl || !stats) return;
+  cardEl.querySelector(".view-count span").textContent = stats.views;
+  cardEl.querySelector(".like-btn span").textContent = stats.likes;
+  cardEl.querySelector(".comment-btn span").textContent = stats.comments;
+  cardEl.querySelector(".like-btn").classList.toggle("liked", stats.liked);
+}
+function applyLanguage() {
+  document.documentElement.lang = state.lang;
+  localStorage.setItem("tourLang", state.lang);
+  document.querySelectorAll("[data-lang]").forEach(function(btn) { btn.classList.toggle("active", btn.dataset.lang === state.lang); });
+  const fresh = document.querySelector("[data-i18n=fresh]"); if (fresh) fresh.textContent = tr("fresh");
+  document.querySelector(".hero h1").textContent = tr("hero");
+  document.querySelector(".hero > p").textContent = tr("intro");
+  qEl.placeholder = tr("search");
+  updateToolbarHeading();
+  document.getElementById("reset").textContent = tr("clear");
+  document.getElementById("commentTitle").textContent = tr("comments");
+  document.getElementById("commentInput").placeholder = tr(state.activeCommentTab === "feedback" ? "feedbackPlaceholder" : "commentPlaceholder");
+  document.getElementById("channelCommentTab").textContent = tr("channelComment");
+  document.getElementById("feedbackTab").textContent = tr("feedback");
+  document.getElementById("resultNote").textContent = tr("loading");
+  qEl.setAttribute("aria-label", tr("search"));
+  document.getElementById("clearSearch").setAttribute("aria-label", tr("clear"));
+  document.getElementById("sheetClose").setAttribute("aria-label", tr("close"));
+  document.getElementById("commentClose").setAttribute("aria-label", tr("close"));
+  document.getElementById("commentSend").setAttribute("aria-label", tr("send"));
+  document.getElementById("scrollTop").setAttribute("aria-label", state.lang === "ru" ? "Вернуться наверх" : "Sahifa boshiga qaytish");
+  renderFilterLabels();
+  document.getElementById("matchToolLabel").textContent = selectedFilterCount() ? (state.lang === "ru" ? tr("selectedFilters") + ": " + selectedFilterCount() : selectedFilterCount() + " " + tr("selectedFilters")) : tr("matchTool");
+  document.getElementById("onboardingClose").setAttribute("aria-label", tr("close"));
+  applyOnboardingLanguage();
+  renderHotOffers();
+}
+function renderFilterLabels() {
+  const count = selectedFilterCount();
+  document.getElementById("matchTool").classList.toggle("active", Boolean(count));
+  document.getElementById("matchToolLabel").textContent = count ? (state.lang === "ru" ? tr("selectedFilters") + ": " + count : count + " " + tr("selectedFilters")) : tr("matchTool");
+}
+function openSheet(type) {
+  activeFilter = type;
+  const options = document.getElementById("sheetOptions");
+  if (type === "price") {
+    document.getElementById("sheetTitle").textContent = tr("price");
+    options.innerHTML = '<form id="rangeForm" class="range-form"><div class="range-grid"><div class="range-field"><label>' + tr("from") + '</label><input id="rangeFrom" class="range-input" type="number" min="0" value="' + escapeHtml(state.minPrice) + '"></div><div class="range-field"><label>' + tr("to") + '</label><input id="rangeTo" class="range-input" type="number" min="0" value="' + escapeHtml(state.maxPrice) + '"></div></div><div class="range-actions"><button class="range-action" type="button" id="rangeClear">' + tr("clear") + '</button><button class="range-action primary" type="submit">' + tr("apply") + '</button></div></form>';
+    document.getElementById("rangeClear").onclick = function() { state.minPrice = state.maxPrice = ""; renderFilterLabels(); closeSheet(); load(); };
+    document.getElementById("rangeForm").onsubmit = function(e) { e.preventDefault(); state.minPrice = document.getElementById("rangeFrom").value; state.maxPrice = document.getElementById("rangeTo").value; renderFilterLabels(); closeSheet(); load(); };
+  } else if (type === "dates") {
+    document.getElementById("sheetTitle").textContent = tr("dates");
+    options.innerHTML = '<form id="rangeForm" class="range-form"><strong>' + tr("departure") + '</strong><div class="range-grid"><div class="range-field"><label>' + tr("from") + '</label><input id="departureFromInput" class="range-input" type="date" value="' + escapeHtml(state.departureFrom) + '"></div><div class="range-field"><label>' + tr("to") + '</label><input id="departureToInput" class="range-input" type="date" value="' + escapeHtml(state.departureTo) + '"></div></div><strong>' + tr("returnDate") + '</strong><div class="range-grid"><div class="range-field"><label>' + tr("from") + '</label><input id="returnFromInput" class="range-input" type="date" value="' + escapeHtml(state.returnFrom) + '"></div><div class="range-field"><label>' + tr("to") + '</label><input id="returnToInput" class="range-input" type="date" value="' + escapeHtml(state.returnTo) + '"></div></div><div class="range-actions"><button class="range-action" type="button" id="rangeClear">' + tr("clear") + '</button><button class="range-action primary" type="submit">' + tr("apply") + '</button></div></form>';
+    document.getElementById("rangeClear").onclick = function() { state.departureFrom = state.departureTo = state.returnFrom = state.returnTo = ""; renderFilterLabels(); closeSheet(); load(); };
+    document.getElementById("rangeForm").onsubmit = function(e) { e.preventDefault(); state.departureFrom = document.getElementById("departureFromInput").value; state.departureTo = document.getElementById("departureToInput").value; state.returnFrom = document.getElementById("returnFromInput").value; state.returnTo = document.getElementById("returnToInput").value; renderFilterLabels(); closeSheet(); load(); };  } else {
+    document.getElementById("sheetTitle").textContent = tr(labels[type].titleKey);
+    const values = state.filters[labels[type].key] || [];
+    const all = [{value:"", text:tr(labels[type].emptyKey)}].concat(values.map(function(v) {
+      return { value:v, text:type === "source" ? sourceName(v) : (type === "channel" ? "@" + v : v) };
+    }));
+    options.innerHTML = all.map(function(item) {
+      return '<button class="option ' + (state[type] === item.value ? 'selected' : '') + '" data-value="' + escapeHtml(item.value) + '">' + escapeHtml(item.text) + '</button>';
+    }).join("");
+  }
+  backdrop.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeSheet() { backdrop.classList.remove("open"); document.body.style.overflow = ""; }
+document.querySelectorAll("[data-filter]").forEach(function(btn) { btn.addEventListener("click", function() { openSheet(btn.dataset.filter); }); });
+document.getElementById("sheetOptions").addEventListener("click", function(e) {
+  const option = e.target.closest("[data-value]"); if (!option) return;
+  state[activeFilter] = option.dataset.value; renderFilterLabels(); closeSheet(); load();
+});
+document.getElementById("sheetClose").addEventListener("click", closeSheet);
+backdrop.addEventListener("click", function(e) { if (e.target === backdrop) closeSheet(); });
+qEl.addEventListener("input", function() { clearTimeout(debounceTimer); state.q = qEl.value.trim(); debounceTimer = setTimeout(load,350); });
+document.getElementById("clearSearch").addEventListener("click", function() { qEl.value = ""; state.q = ""; load(); qEl.focus(); });
+document.getElementById("reset").addEventListener("click", function() {
+  state.q = state.country = state.source = state.channel = state.minPrice = state.maxPrice = state.departureFrom = state.departureTo = state.returnFrom = state.returnTo = ""; state.selectedCountries=[]; state.selectedSources=[]; state.selectedChannels=[]; qEl.value = ""; renderFilterLabels(); load();
+});
+list.addEventListener("click", async function(e) {
+  const cardEl = e.target.closest(".card[data-tour-id]");
+  if (!cardEl) return;
+  const tourId = Number(cardEl.dataset.tourId);
+  const summaryToggle = e.target.closest(".summary-toggle");
+  if (summaryToggle) {
+    const summary = summaryToggle.previousElementSibling;
+    const expanded = summaryToggle.getAttribute("aria-expanded") === "true";
+    summary.classList.toggle("is-collapsed", expanded);
+    summaryToggle.setAttribute("aria-expanded", String(!expanded));
+    summaryToggle.textContent = tr(expanded ? "showMore" : "showLess");
+    return;
+  }
+  const like = e.target.closest(".like-btn");
+  if (like) {
+    like.disabled = true;
+    try {
+      const response = await apiFetch("/api/tours/" + tourId + "/like", { method:"POST" });
+      if (response.ok) updateCardStats(tourId, await response.json());
+    } finally { like.disabled = false; }
+    return;
+  }
+  if (e.target.closest(".comment-btn")) { openComments(tourId); return; }
+  if (e.target.closest(".share-btn")) {
+    const deepLink = "https://t.me/turbozorbot?startapp=tour_" + tourId;
+    const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(deepLink) + "&text=" + encodeURIComponent(tr("shareMessage"));
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl); else window.open(shareUrl, "_blank");
+    return;
+  }
+  const link = e.target.closest("[data-url]"); if (!link) return;
+  e.preventDefault(); const url = link.dataset.url;
+  apiFetch("/api/activity/source-click/" + tourId, { method:"POST" }).catch(function() {});
+  if (tg && tg.openTelegramLink && url.indexOf("https://t.me/") === 0) tg.openTelegramLink(url);
+  else if (tg && tg.openLink) tg.openLink(url);
+  else window.open(url,"_blank");
+});
+commentList.addEventListener("click", function(e) {
+  const profileLink = e.target.closest("[data-profile]");
+  if (!profileLink || profileLink.dataset.profile === "#") return;
+  e.preventDefault();
+  const url = profileLink.dataset.profile;
+  if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url, "_blank");
+});
+document.querySelectorAll("[data-comment-tab]").forEach(function(button) {
+  button.addEventListener("click", function() { selectCommentTab(button.dataset.commentTab); });
+});
+document.getElementById("commentClose").addEventListener("click", closeComments);
+commentBackdrop.addEventListener("click", function(e) { if (e.target === commentBackdrop) closeComments(); });
+document.getElementById("commentForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const input = document.getElementById("commentInput");
+  const send = document.getElementById("commentSend");
+  const text = input.value.trim();
+  if (!text || !state.activeTourId) return;
+  send.disabled = true;
+  try {
+    const response = await apiFetch("/api/tours/" + state.activeTourId + "/" + (state.activeCommentTab === "feedback" ? "feedback" : "comments"), {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:text})
+    });
+    if (!response.ok) throw new Error("Comment");
+    const item = await response.json();
+    if (commentList.querySelector(".comment-empty")) commentList.innerHTML = "";
+    commentList.insertAdjacentHTML("beforeend", commentMarkup(item));
+    commentList.scrollTop = commentList.scrollHeight;
+    input.value = "";
+    if (item.stats) updateCardStats(state.activeTourId, item.stats);
+  } catch (error) {
+    if (tg && tg.showAlert) tg.showAlert(tr(state.activeCommentTab === "feedback" ? "feedbackSendError" : "commentSendError"));
+  } finally { send.disabled = false; }
+});
+const scrollTopButton = document.getElementById("scrollTop");
+let scrollTopTicking = false;
+window.addEventListener("scroll", function() {
+  if (scrollTopTicking) return;
+  scrollTopTicking = true;
+  requestAnimationFrame(function() {
+    scrollTopButton.classList.toggle("show", window.scrollY > 420);
+    scrollTopTicking = false;
+  });
+}, {passive:true});
+scrollTopButton.addEventListener("click", function() { window.scrollTo({top:0,behavior:"smooth"}); });document.querySelectorAll(".hot-tab").forEach(function(button) {
+  button.addEventListener("click", function() { state.hotTab = button.dataset.hotTab; renderHotOffers(); });
+});
+document.getElementById("hotTrack").addEventListener("click", async function(event) {
+  const hot = event.target.closest("[data-hot-tour-id]"); if (!hot) return;
+  const tourId = Number(hot.dataset.hotTourId);
+  let target = document.querySelector('.card[data-tour-id="' + tourId + '"]');
+  if (!target) {
+    try {
+      const response = await apiFetch("/api/tours/" + tourId); if (!response.ok) return;
+      const tour = await response.json(); list.insertAdjacentHTML("afterbegin", card(tour)); observeCards();
+      target = document.querySelector('.card[data-tour-id="' + tourId + '"]');
+    } catch (error) { return; }
+  }
+  target.scrollIntoView({behavior:"smooth",block:"start"});
+});document.getElementById("matchTool").addEventListener("click", openOnboarding);
+document.getElementById("onboardingClose").addEventListener("click", closeOnboarding);
+document.getElementById("onboardingBackdrop").addEventListener("click", function(event) { if (event.target === this) closeOnboarding(); });
+document.getElementById("onboardingForm").addEventListener("submit", function(event) {
+  event.preventDefault();
+  state.selectedCountries=Array.from(document.querySelectorAll('[data-builder="country"]:checked')).map(function(input){return input.value;});
+  state.selectedSources=Array.from(document.querySelectorAll('[data-builder="source"]:checked')).map(function(input){return input.value;});
+  state.selectedChannels=Array.from(document.querySelectorAll('[data-builder="channel"]:checked')).map(function(input){return input.value;});
+  state.minPrice=document.getElementById("builderMinPrice").value;
+  state.maxPrice=document.getElementById("builderMaxPrice").value;
+  state.departureFrom=document.getElementById("builderDepartureFrom").value;
+  state.departureTo=document.getElementById("builderDepartureTo").value;
+  state.returnFrom=document.getElementById("builderReturnFrom").value;
+  state.returnTo=document.getElementById("builderReturnTo").value;
+  closeOnboarding(); renderFilterLabels(); load();
+});
+document.getElementById("preferenceClear").addEventListener("click", function() {
+  state.selectedCountries=[]; state.selectedSources=[]; state.selectedChannels=[];
+  state.minPrice=state.maxPrice=state.departureFrom=state.departureTo=state.returnFrom=state.returnTo="";
+  openOnboarding(); renderFilterLabels(); load();
+});
+document.querySelectorAll("[data-lang]").forEach(function(btn) {
+  btn.addEventListener("click", function() { state.lang = btn.dataset.lang; applyLanguage(); load(); });
+});
+apiFetch("/api/session", { method:"POST" }).catch(function() {});
+const filtersReady = apiFetch("/api/filters").then(function(r) { return r.json(); }).then(function(data) { state.filters = data; renderDestinationChips(); }).catch(function() {});
+loadHotOffers();
+applyLanguage();
+const launchParams = new URLSearchParams(location.search);
+const startParam = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) ||
+  launchParams.get("tgWebAppStartParam") || launchParams.get("startapp") || "";
+if (/^tour_\d+$/.test(startParam)) {
+  const sharedId = Number(startParam.slice(5));
+  apiFetch("/api/tours/" + sharedId).then(function(response) {
+    if (!response.ok) throw new Error("Tour");
+    return response.json();
+  }).then(function(tour) {
+    document.getElementById("resultNote").textContent = tr("sharedTour");
+    list.innerHTML = card(tour);
+    observeCards();
+  }).catch(load);
+} else {
+  filtersReady.finally(initializePersonalization);
+}
+</script>
+</body>
+</html>

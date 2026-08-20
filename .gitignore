@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+*.db
+*.session
+.env.mysql
+.env.production
+
+# Loglar va PID fayllar
+*.log
+.*.pid
+backend/media/
+backups/
