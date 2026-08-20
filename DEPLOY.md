@@ -1,49 +1,70 @@
-# TourFinder(Beta) deploy
+# TourFinder(Beta) — deploy
 
-Loyiha uchta alohida jarayon bilan ishlaydi:
+Loyiha Docker Compose orqali beshta xizmat bilan ishlaydi:
 
-- `api` — FastAPI va Telegram Mini App backend;
-- `worker` — Telegram scrape va bepul rule-based parser fon vazifalari;
-- `migrate` — MySQL jadvallarini yaratish va eskirgan turlarni tozalash.
+| Xizmat | Vazifasi |
+|---|---|
+| `mysql` | Ma'lumotlar bazasi |
+| `redis` | Job navbati va kesh |
+| `migrate` | Jadvallarni yaratadi, eskirgan turlarni tozalaydi (bir marta ishlaydi) |
+| `api` | FastAPI + Telegram Mini App |
+| `worker` | `create` va `update` joblarini bajaradi |
+| `scheduler` | Joblarni jadval bo'yicha navbatga qo'yadi |
 
-Production scheduler avtomatik ishlaydi: har kuni 08:00, 13:00 va 21:00 da scrape va bepul parser pipeline bajariladi.
+Jadval (Toshkent vaqti):
+
+- **20:00 — create**: kanallardan yangi postlar olinadi va Claude orqali tahlil qilinadi
+- **21:00 — update**: tahrirlangan postlar topiladi, turlar yangilanadi
 
 ## 1. Serverni tayyorlash
 
-Ubuntu serverda Docker Engine va Docker Compose plugin o‘rnatilgan bo‘lishi kerak. Loyiha fayllarini serverga ko‘chiring va loyiha papkasiga kiring.
+Ubuntu serverda Docker Engine va Docker Compose plugin bo'lishi kerak.
+
+```bash
+git clone <repo> tour_finder && cd tour_finder
+```
+
+Maxfiy fayllar repozitoriyda yo'q — ularni qo'lda yaratasiz:
 
 ```bash
 cp backend/.env.prod.example backend/.env.production
 cp .env.mysql.example .env.mysql
 ```
 
-Quyidagi fayllardagi `CHANGE_ME` qiymatlarini almashtiring:
+### Majburiy to'ldiriladigan qiymatlar
 
-- `backend/.env.production`: Telegram API, bot tokeni, Telegram session va boshqa ilova sozlamalari;
-- `.env.mysql`: MySQL root/user parollari.
+`backend/.env.production` ichida:
 
-`DATABASE_URL` ichidagi MySQL paroli `.env.mysql` dagi `MYSQL_PASSWORD` bilan bir xil bo‘lishi shart. Parolda `@`, `:`, `/`, `#` kabi belgilar bo‘lsa, URL-encoded qiymatdan foydalaning.
+| Sozlama | Izoh |
+|---|---|
+| `TELEGRAM_SESSION` | Yig'uvchi akkaunt sessiyasi. **Shaxsiy akkaunt ishlatmang** |
+| `TELEGRAM_BOT_TOKEN` | @BotFather dan |
+| `CLAUDE_API` | console.anthropic.com dan. Bo'lmasa turlar umuman ajratilmaydi |
+| `TELEGRAM_WEBAPP_URL` | Haqiqiy HTTPS domen |
+| `ADMIN_CHAT_ID` | Limit ogohlantirishi va update hisoboti shu chatga ketadi |
+| `DATABASE_URL` | Paroli `.env.mysql` dagi `MYSQL_PASSWORD` bilan bir xil bo'lishi shart |
 
+`.env.mysql` ichida `MYSQL_PASSWORD` va `MYSQL_ROOT_PASSWORD` — kuchli parollar.
+Parolda `@ : / #` belgilari bo'lmasin, aks holda `DATABASE_URL` buziladi.
 
-Production rejimida faqat bepul rule-based parser ishlaydi; tashqi AI API kaliti va parsing xarajati yo'q.`r`n
-## 2. Ishga tushirish
+### Telegram sessiyasi haqida
 
-Linux serverda:
+Sessiya string akkauntga to'liq kirish huquqini beradi. Ikkita qoida:
+
+1. **Alohida akkaunt** ishlating — shaxsiy emas. Cheklov tushsa, shaxsiy akkaunt zarar ko'rmaydi.
+2. **Bitta sessiya — bitta joy.** Ayni sessiyani uy kompyuteri va serverda bir vaqtda ishlatmang, Telegram uzib qo'yadi. Uyda kerak bo'lsa alohida sessiya oling:
 
 ```bash
-chmod +x deploy.sh
-./deploy.sh
+python -m app.scraper.telegram --login
 ```
 
-Windows PowerShell’da:
+## 2. Ishga tushirish
 
-```powershell
-.\deploy.ps1
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Skript image’ni build qiladi, MySQL va Redis’ni ishga tushiradi, migratsiyani bajaradi, so‘ng API va worker’ni ko‘taradi.
-
-Holat va loglarni tekshirish:
+Tekshirish:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
@@ -54,85 +75,78 @@ curl http://localhost:8000/api/health
 Qayta deploy:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+git pull && docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-To‘xtatish:
+To'xtatish:
 
 ```bash
 docker compose -f docker-compose.prod.yml down
 ```
 
-`down -v` ishlatmang: `-v` MySQL va Redis volume’larini ham o‘chiradi.
+`down -v` **ishlatmang** — `-v` MySQL va Redis volume'larini o'chiradi.
 
-## 3. HTTPS va Telegram Mini App URL
+## 3. HTTPS va Mini App
 
-Telegram Mini App uchun ochiq HTTPS manzil kerak. Reverse proxy orqali `https://sizning-domeningiz.uz` ni serverdagi `http://127.0.0.1:8000` ga yo‘naltiring.
+Mini App uchun ochiq HTTPS manzil shart. Ikki yo'l bor.
 
-Cloudflare Tunnel ishlatilsa, `backend/.env.production` ichiga `TUNNEL_TOKEN` yozing va:
+**Reverse proxy** (nginx + Let's Encrypt) — `https://sizning-domen.uz` ni `http://127.0.0.1:8000` ga yo'naltiring.
+
+**Cloudflare Tunnel** — `backend/.env.production` ga `TUNNEL_TOKEN` yozing va:
 
 ```bash
 docker compose -f docker-compose.prod.yml --profile tunnel up -d --build
 ```
 
-Keyin BotFather’dagi Main App URL va Web App URL’ni shu HTTPS manzilga o‘zgartiring.
-
-## 4. Hozirgi MySQL ma’lumotlarini serverga ko‘chirish
-
-Eski kompyuterda dump yarating:
-
-```powershell
-docker exec tour-finder-mysql mysqldump -uroot -pYOUR_ROOT_PASSWORD --single-transaction --routines --triggers tour_finder_free > tour_finder_free.sql
-```
-
-`tour_finder_free.sql` faylini serverga ko‘chiring. Serverdagi yangi stack ishga tushgach, tiklang:
+Domen tayyor bo'lgach, webhook va menu tugmasini ro'yxatdan o'tkazing:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec -T mysql mysql -uroot -pYOUR_ROOT_PASSWORD tour_finder_free < tour_finder_free.sql
+docker compose -f docker-compose.prod.yml exec api python -m app.bot_setup https://sizning-domen.uz
+```
+
+## 4. Qo'lda job ishga tushirish
+
+```bash
+# yangi postlarni yig'ish va tahlil qilish
+docker compose -f docker-compose.prod.yml exec api python scripts/enqueue_job.py create
+
+# tahrirlangan postlarni tekshirish
+docker compose -f docker-compose.prod.yml exec api python scripts/enqueue_job.py update
+```
+
+## 5. Xarajat va monitoring
+
+Turlar Claude Opus 5 orqali ajratiladi. Har post **bir marta** tahlil qilinadi;
+matni o'zgarmagan post qayta yuborilmaydi. Ikki kanal va kuniga ~5 post uchun
+taxminan **$2–3/oy**.
+
+Claude krediti tugasa yoki kalit xato bo'lsa, yurish darhol to'xtaydi va
+`ADMIN_CHAT_ID` ga ogohlantirish keladi. Postlar navbatda qoladi va muammo hal
+bo'lgach avtomatik qayta ishlanadi — katalogga sifatsiz ma'lumot yozilmaydi.
+
+## 6. Zaxira nusxa
+
+```bash
+docker compose -f docker-compose.prod.yml exec mysql \
+  mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction tour_finder \
+  > backup-$(date +%F).sql
+```
+
+Tiklash:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T mysql \
+  mysql -u root -p"$MYSQL_ROOT_PASSWORD" tour_finder < backup-2026-08-18.sql
 docker compose -f docker-compose.prod.yml restart api worker
 ```
 
-Parolni shell history’da qoldirmaslik uchun production’da interaktiv MySQL login yoki server secret manager’dan foydalanish tavsiya etiladi.
+## 7. Deploydan oldingi ro'yxat
 
-## 5. Qo‘lda scrape
-
-Pipeline scheduler orqali avtomatik ishlaydi. Zarur holatda worker navbatiga manual yuborish mumkin:
-
-```bash
-docker compose -f docker-compose.prod.yml exec api python scripts/enqueue_job.py scrape_and_pipeline
-```
-
-Faqat postlarni yig‘ish:
-
-```bash
-docker compose -f docker-compose.prod.yml exec api python scripts/enqueue_job.py scrape
-```
-
-Faqat oldin yig‘ilgan postlarni bepul parser pipeline’dan o‘tkazish:
-
-```bash
-docker compose -f docker-compose.prod.yml exec api python scripts/enqueue_job.py pipeline
-```
-
-Production serverda `TELEGRAM_SESSION_STRING` oldindan sozlangan bo‘lishi kerak. Shunda qayta interaktiv login talab qilinmaydi.
-
-## 6. Notification va analytics
-
-Mini Appga kirgan Telegram userlar `notification_subscribers` va `app_users` jadvallarida saqlanadi. Har pipeline tugaganda bot yangi turlar soni bilan notification yuboradi.
-
-Jadval sozlamalari:
-
-```env
-PIPELINE_SCHEDULE=08:00,13:00,21:00
-PIPELINE_TIMEZONE=Asia/Tashkent
-TELEGRAM_WEBAPP_URL=https://sizning-domeningiz.uz
-ADMIN_JOB_KEY=uzun-maxfiy-key
-```
-
-Admin analytics:
-
-```bash
-curl -H "X-Admin-Key: YOUR_ADMIN_KEY" https://sizning-domeningiz.uz/api/admin/analytics
-```
-
-Endpoint jami userlar, DAU/WAU/MAU, top qidirilgan davlatlar, o‘rtacha budjet, top turlar, manba bosishlari va kanal view/click reytingini qaytaradi.
+- [ ] Yig'uvchi uchun alohida Telegram akkaunt va yangi sessiya
+- [ ] Bot tokeni yangilangan
+- [ ] Claude API kaliti yangilangan va hisobda kredit bor
+- [ ] `.env.mysql` da kuchli parollar, `DATABASE_URL` bilan mos
+- [ ] HTTPS domen tayyor
+- [ ] `bot_setup` ishga tushirilgan
+- [ ] `curl /api/health` javob beryapti
+- [ ] Zaxira nusxa cron'ga qo'yilgan
