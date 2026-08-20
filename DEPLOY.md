@@ -1,4 +1,4 @@
-# TourFinder(Beta) — deploy
+# EasyFinder(Beta) — deploy
 
 Loyiha Docker Compose orqali beshta xizmat bilan ishlaydi:
 

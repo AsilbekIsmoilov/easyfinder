@@ -1,4 +1,4 @@
-# TourFinder(Beta) bot — huquqiy va mahsulot dokumentatsiyasi
+# EasyFinder(Beta) bot — huquqiy va mahsulot dokumentatsiyasi
 
 Versiya: 1.0  
 Sana: 2026-07-29
@@ -26,7 +26,7 @@ Privacy URL’ni `@BotFather` ichida botning Privacy Policy sozlamasiga qo‘yin
 5. Foydalanuvchi ma’lumotini eksport/o‘chirish bo‘yicha ichki jarayon va javob muddati.
 6. O‘zbekistonda shaxsga doir ma’lumotlar bazasini ro‘yxatdan o‘tkazish va lokalizatsiya talabi bo‘yicha yurist xulosasi.
 7. Scrape qilinadigan kanallar bilan ruxsat/litsenziya yoki takedown jarayoni.
-8. Brend nomi o‘zgarganda barcha hujjatlarda `TourFinder(Beta)` va `@turbozorbot`ni almashtirish.
+8. Brend nomi o‘zgarganda barcha hujjatlarda `EasyFinder(Beta)` va `@izyfinderbot`ni almashtirish.
 9. Rus tilidagi yuridik tarjimani yurist bilan tekshirtirish.
 
 ## Hozirgi tizimda saqlanadigan user ma’lumotlari

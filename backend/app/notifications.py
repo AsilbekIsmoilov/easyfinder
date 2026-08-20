@@ -47,7 +47,7 @@ def subscribe(chat_id: str, display_name: str, username: str | None = None) -> N
 def _button() -> dict:
     if settings.telegram_webapp_url:
         return {"text": "✈️ Turlarni ko‘rish", "web_app": {"url": settings.telegram_webapp_url.rstrip("/")}}
-    return {"text": "✈️ Turlarni ko‘rish", "url": "https://t.me/turbozorbot?startapp"}
+    return {"text": "✈️ Turlarni ko‘rish", "url": "https://t.me/izyfinderbot?startapp"}
 
 
 def active_tour_statistics() -> dict:
@@ -81,10 +81,10 @@ def _money(amount: float, currency: str) -> str:
 def statistics_message(*, reason: str, scraped: int = 0, processed: int = 0, created: int = 0) -> str:
     stats = active_tour_statistics()
     if reason == "start":
-        header = "👋 <b>TourFinder(Beta)’ga xush kelibsiz!</b>"
+        header = "👋 <b>EasyFinder(Beta)’ga xush kelibsiz!</b>"
         intro = "Siz uchun Telegram kanallaridagi dolzarb sayohat takliflarini bir joyga jamladik."
     else:
-        header = "✅ <b>TourFinder(Beta) yangilandi</b>"
+        header = "✅ <b>EasyFinder(Beta) yangilandi</b>"
         intro = f"Yangi postlar: <b>{scraped}</b> · Qayta ishlangan: <b>{processed}</b> · Yangilangan turlar: <b>{created}</b>"
 
     lines = [header, "", intro, "", f"📊 <b>Faol turlar: {stats['active']} ta</b>", "", "🌍 <b>Davlatlar bo‘yicha:</b>"]
@@ -274,7 +274,7 @@ def notify_pipeline(*, scraped: int, processed: int, created: int, failed: bool 
             if failed:
                 bot_api("sendMessage", {
                     "chat_id": subscriber.chat_id,
-                    "text": "⚠️ <b>TourFinder(Beta) yangilanishida vaqtinchalik xatolik yuz berdi.</b>\n\nKeyingi urinish jadval bo‘yicha avtomatik bajariladi.",
+                    "text": "⚠️ <b>EasyFinder(Beta) yangilanishida vaqtinchalik xatolik yuz berdi.</b>\n\nKeyingi urinish jadval bo‘yicha avtomatik bajariladi.",
                     "parse_mode": "HTML",
                 })
             else:

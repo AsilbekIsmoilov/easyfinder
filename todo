@@ -101,3 +101,12 @@ tur narxlarini;
 ------------------------------------------------------
 
 tur firmalar ga murojaat qilinadi + tur firmalar o'zlarini kanalini qo'shib qo'yishlari ham mumkin.
+
+
+
+Sizda qolgani
+Bot tokeni va Claude kalitini yangilash
+Claude hisobiga kredit
+VPS va domen
+.env.production, .env.mysql ni serverga ko'chirish (git orqali ketmaydi)
+VPS tanlaganingizda ayting — git remote qo'shib, birinchi deployni birga o'tkazamiz. Serverni hali tanlamagan bo'lsangiz, shu hajm uchun eng arzon variantlarni ko'rib chiqamiz: 2 GB RAM yetadi, chunki MySQL + Redis + uchta yengil Python jarayoni.
