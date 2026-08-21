@@ -11,10 +11,19 @@ Loyiha Docker Compose orqali beshta xizmat bilan ishlaydi:
 | `worker` | `create` va `update` joblarini bajaradi |
 | `scheduler` | Joblarni jadval bo'yicha navbatga qo'yadi |
 
-Jadval (Toshkent vaqti):
+Ikkita job bor:
 
-- **20:00 — create**: kanallardan yangi postlar olinadi va Claude orqali tahlil qilinadi
-- **21:00 — update**: tahrirlangan postlar topiladi, turlar yangilanadi
+- **create** — kanallardan yangi postlar olinadi va Claude orqali tahlil qilinadi
+- **update** — tahrirlangan postlar topiladi, turlarning ma'lumoti yangilanadi
+
+Ishga tushish vaqti `.env.production` dagi `CREATE_SCHEDULE` va `UPDATE_SCHEDULE`
+bilan belgilanadi (`PIPELINE_TIMEZONE` bo'yicha). Vergul bilan bir nechta vaqt
+yozish mumkin, masalan `CREATE_SCHEDULE=08:00,14:00,20:00`. Boshlang'ich qiymat
+kuniga bir marta; oqim o'sganda chastotani oshirish mumkin.
+
+Chastotani oshirish Claude xarajatini deyarli o'zgartirmaydi, chunki har post
+faqat bir marta tahlil qilinadi — faqat tizim prompti keshi tez-tez qayta
+yoziladi.
 
 ## 1. Serverni tayyorlash
 
@@ -43,6 +52,7 @@ cp .env.mysql.example .env.mysql
 | `TELEGRAM_WEBAPP_URL` | Haqiqiy HTTPS domen |
 | `ADMIN_CHAT_ID` | Limit ogohlantirishi va update hisoboti shu chatga ketadi |
 | `DATABASE_URL` | Paroli `.env.mysql` dagi `MYSQL_PASSWORD` bilan bir xil bo'lishi shart |
+| `SCRAPE_LIMIT` | Har kanaldan bir yurishda nechta xabar o'qilsin (50–100 tavsiya etiladi) |
 
 `.env.mysql` ichida `MYSQL_PASSWORD` va `MYSQL_ROOT_PASSWORD` — kuchli parollar.
 Parolda `@ : / #` belgilari bo'lmasin, aks holda `DATABASE_URL` buziladi.
@@ -117,8 +127,9 @@ docker compose -f docker-compose.prod.yml exec api python scripts/enqueue_job.py
 ## 5. Xarajat va monitoring
 
 Turlar Claude Opus 5 orqali ajratiladi. Har post **bir marta** tahlil qilinadi;
-matni o'zgarmagan post qayta yuborilmaydi. Ikki kanal va kuniga ~5 post uchun
-taxminan **$2–3/oy**.
+matni o'zgarmagan post qayta yuborilmaydi. Xarajat post oqimiga bog'liq, katalog
+hajmiga emas: ikki kanal va kuniga bir necha post uchun taxminan **$2–4/oy**.
+Jadval tez-tezlashtirilsa yoki kanal qo'shilsa proporsional o'sadi.
 
 Claude krediti tugasa yoki kalit xato bo'lsa, yurish darhol to'xtaydi va
 `ADMIN_CHAT_ID` ga ogohlantirish keladi. Postlar navbatda qoladi va muammo hal
