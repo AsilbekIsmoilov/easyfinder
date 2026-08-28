@@ -46,7 +46,7 @@ def setup_menu(webapp_url: str) -> str:
         {
             "menu_button": {
                 "type": "web_app",
-                "text": "Turlarni ko'rish",
+                "text": "Let's open !)",
                 "web_app": {"url": webapp_url.rstrip("/")},
             }
         },
@@ -59,4 +59,4 @@ if __name__ == "__main__":
     parser.add_argument("url", help="Mini App public HTTPS URL")
     args = parser.parse_args()
     username = setup_menu(args.url)
-    print(f"Tayyor: https://t.me/{username} -> Turlarni ko'rish")
+    print(f"Tayyor: https://t.me/{username} -> Let's open !)")

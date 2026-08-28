@@ -1,0 +1,17 @@
+# Sertifikat Let's Encrypt'dan avtomatik olinadi va o'zi yangilanadi.
+# Domen .env.caddy dagi APP_DOMAIN dan keladi.
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# Telegram Mini App iframe ichida ochiladi — X-Frame-Options qo'ymaymiz.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy api:8000 {
+		header_up X-Forwarded-Proto {scheme}
+	}
+}

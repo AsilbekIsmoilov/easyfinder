@@ -35,10 +35,16 @@ yoziladi.
 
 ## 1. Serverni tayyorlash
 
-Ubuntu serverda Docker Engine va Docker Compose plugin bo'lishi kerak.
+Ubuntu 22.04+ server. Minimal talab: **2 GB RAM, 1 vCPU, 20 GB disk** —
+Contabo, Hetzner yoki shunga o'xshash arzon VPS yetarli.
+
+Docker o'rnatish va repozitoriyni olish:
 
 ```bash
-git clone <repo> tour_finder && cd tour_finder
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER && newgrp docker
+
+git clone <repo> easyfinder && cd easyfinder
 ```
 
 Maxfiy fayllar repozitoriyda yo'q — ularni qo'lda yaratasiz:
@@ -104,23 +110,79 @@ docker compose -f docker-compose.prod.yml down
 
 `down -v` **ishlatmang** — `-v` MySQL va Redis volume'larini o'chiradi.
 
-## 3. HTTPS va Mini App
+## 3. Domen va HTTPS
 
-Mini App uchun ochiq HTTPS manzil shart. Ikki yo'l bor.
+Telegram Mini App **haqiqiy HTTPS sertifikat** talab qiladi. Sertifikat domen
+nomiga beriladi, IP manzilga emas — shuning uchun domensiz ishlamaydi.
 
-**Reverse proxy** (nginx + Let's Encrypt) — `https://sizning-domen.uz` ni `http://127.0.0.1:8000` ga yo'naltiring.
+### 3.1. Domen
 
-**Cloudflare Tunnel** — `backend/.env.production` ga `TUNNEL_TOKEN` yozing va:
+Arzon variantlar: `.xyz`, `.top`, `.site` — yiliga $1–3 (Porkbun, Namecheap).
+`.uz` va `.com` ~$10/yil. Beta uchun arzoni yetarli.
+
+Domen olgach, DNS sozlamalarida **A yozuvi** qo'shing:
+
+| Turi | Nomi | Qiymati |
+|---|---|---|
+| A | `@` | server IP manzili |
+| A | `www` | server IP manzili |
+
+DNS tarqalishini kuting (odatda 5–30 daqiqa) va tekshiring:
 
 ```bash
-docker compose -f docker-compose.prod.yml --profile tunnel up -d --build
+dig +short sizning-domen.xyz
 ```
 
-Domen tayyor bo'lgach, webhook va menu tugmasini ro'yxatdan o'tkazing:
+Server IP si chiqmaguncha keyingi qadamga o'tmang — Let's Encrypt sertifikat
+bermaydi.
+
+### 3.2. Caddy
+
+Sertifikatni Caddy avtomatik oladi va yangilab turadi. Konfiguratsiya:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec api python -m app.bot_setup https://sizning-domen.uz
+cp .env.caddy.example .env.caddy
 ```
+
+Ichiga domeningizni va email'ingizni yozing:
+
+```env
+APP_DOMAIN=sizning-domen.xyz
+ACME_EMAIL=sizning@email.com
+```
+
+80 va 443 portlari ochiq bo'lishi shart — Let's Encrypt tekshiruvi shu orqali
+o'tadi:
+
+```bash
+sudo ufw allow 80/tcp && sudo ufw allow 443/tcp
+```
+
+Ishga tushirgandan keyin sertifikat 10–60 soniyada olinadi:
+
+```bash
+docker compose -f docker-compose.prod.yml logs -f caddy
+curl -I https://sizning-domen.xyz/api/health
+```
+
+API porti tashqariga chiqarilmaydi — unga faqat Caddy ichki tarmoq orqali
+murojaat qiladi. Ya'ni `http://server-ip:8000` ochilmaydi, bu ataylab shunday.
+
+### 3.3. Botni domenga ulash
+
+`backend/.env.production` da:
+
+```env
+TELEGRAM_WEBAPP_URL=https://sizning-domen.xyz
+```
+
+So'ng webhook va menu tugmasini ro'yxatdan o'tkazing:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api   python -m app.bot_setup https://sizning-domen.xyz
+```
+
+Bu buyruq ikkalasini ham bir vaqtda yozadi. Domen o'zgarsa qayta ishga tushiring.
 
 ## 4. Qo'lda job ishga tushirish
 
@@ -163,12 +225,25 @@ docker compose -f docker-compose.prod.yml restart api worker
 
 - [ ] Yig'uvchi uchun alohida Telegram akkaunt va yangi sessiya
 - [ ] Bot tokeni yangilangan
-- [ ] Claude API kaliti yangilangan va hisobda kredit bor
+- [ ] Claude API kaliti yangilangan va **hisobda kredit bor**
 - [ ] `.env.mysql` da kuchli parollar, `DATABASE_URL` bilan mos
-- [ ] HTTPS domen tayyor
-- [ ] `bot_setup` ishga tushirilgan
-- [ ] `curl /api/health` javob beryapti
+- [ ] Domen olingan, A yozuvi server IP siga yo'naltirilgan (`dig` bilan tekshirilgan)
+- [ ] 80 va 443 portlari ochiq
+- [ ] `.env.caddy` to'ldirilgan
+- [ ] Sertifikat olingan: `curl -I https://domen/api/health` → 200
+- [ ] `TELEGRAM_WEBAPP_URL` domenga yangilangan
+- [ ] `bot_setup` ishga tushirilgan, `getWebhookInfo` da xato yo'q
+- [ ] Botda `/start` ishlaydi va Mini App ochiladi
 - [ ] Zaxira nusxa cron'ga qo'yilgan
+
+Birinchi yurishdan keyin katalog to'lishi uchun:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api python scripts/enqueue_job.py create
+```
+
+Bo'sh bazada bu har kanaldan oxirgi `SCRAPE_LIMIT` ta xabarni tahlil qiladi
+(2 kanal × 50 ≈ $0.50–0.75).
 
 ## 8. Railway'ga deploy (VPS'siz variant)
 

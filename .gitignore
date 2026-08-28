@@ -6,6 +6,7 @@ __pycache__/
 *.session
 .env.mysql
 .env.production
+.env.caddy
 
 # Loglar va PID fayllar
 *.log
