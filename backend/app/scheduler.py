@@ -18,23 +18,41 @@ log = logging.getLogger(__name__)
 
 
 def _add_jobs(scheduler: BlockingScheduler, schedule: str, job: str) -> None:
+    """Jadval satrini CronTrigger'larga aylantiradi.
+
+    Qo'llab-quvvatlanadigan shakllar (vergul bilan aralashtirsa ham bo'ladi):
+        20:00        aniq vaqt
+        *:10         har soat, 10-daqiqada
+        */2:10       har 2 soatda, 10-daqiqada
+    """
     for value in schedule.split(","):
         value = value.strip()
         if not value:
             continue
         hour_text, minute_text = value.split(":", 1)
-        hour, minute = int(hour_text), int(minute_text)
+        minute = int(minute_text)
+
+        if hour_text.startswith("*"):
+            step = int(hour_text[2:]) if hour_text.startswith("*/") else 1
+            hour = f"*/{step}" if step > 1 else "*"
+            label = f"har {step} soatda" if step > 1 else "har soat"
+            job_id = f"{job}-h{step}-{minute:02d}"
+        else:
+            hour = int(hour_text)
+            label = f"{hour:02d}:{minute:02d}"
+            job_id = f"{job}-{hour:02d}-{minute:02d}"
+
         scheduler.add_job(
             enqueue,
             CronTrigger(hour=hour, minute=minute, timezone=settings.pipeline_timezone),
             args=[job],
-            id=f"{job}-{hour:02d}-{minute:02d}",
+            id=job_id,
             coalesce=True,
             max_instances=1,
             misfire_grace_time=900,
             replace_existing=True,
         )
-        log.info("%s jadvali: %02d:%02d %s", job, hour, minute, settings.pipeline_timezone)
+        log.info("%s jadvali: %s (:%02d) %s", job, label, minute, settings.pipeline_timezone)
 
 
 def schedule_pipeline() -> None:

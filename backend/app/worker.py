@@ -38,7 +38,12 @@ def enqueue(job: str) -> str:
 
 
 def run_create() -> None:
-    """Yangi postlarni yig'adi va tahlil qiladi (har kuni 20:00)."""
+    """Yangi postlarni yig'adi va tahlil qiladi.
+
+    Xabar faqat aytadigan narsa bo'lganda yuboriladi. Soatlik jadvalda
+    yurishlarning ko'pchiligida yangi post bo'lmaydi — har safar "0 ta yangi
+    tur" deb yozilsa, obunachilar bir kunda botni bloklaydi.
+    """
     scraped = asyncio.run(scrape())
     result = process_pending(limit=None)
     log.info(
@@ -48,16 +53,18 @@ def run_create() -> None:
     if result.unavailable:
         notify_limit_reached(result.unavailable, stage="create")
         return
-    if settings.pipeline_notifications_enabled:
+    if result.created and settings.pipeline_notifications_enabled:
         notify_pipeline(scraped=scraped, processed=result.seen, created=result.created)
 
 
 def run_update() -> None:
-    """Tahrirlangan postlarni topib, turlarni yangilaydi (har kuni 21:00)."""
+    """Tahrirlangan postlarni topib, turlarni yangilaydi.
+
+    Tahrir topilmasa hech qanday xabar yuborilmaydi — bu odatiy holat.
+    """
     changed_posts = asyncio.run(refresh())
     if not changed_posts:
         log.info("update: tahrirlangan post yo'q")
-        notify_updated_tours(0, [])
         return
 
     result = process_pending(limit=None)
@@ -68,9 +75,10 @@ def run_update() -> None:
     if result.unavailable:
         notify_limit_reached(result.unavailable, stage="update")
         return
-    notify_updated_tours(
-        len(changed_posts), result.changed, added=result.added, removed=result.removed
-    )
+    if result.changed or result.added or result.removed:
+        notify_updated_tours(
+            len(changed_posts), result.changed, added=result.added, removed=result.removed
+        )
 
 
 def run_worker() -> None:

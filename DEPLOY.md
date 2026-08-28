@@ -17,9 +17,17 @@ Ikkita job bor:
 - **update** — tahrirlangan postlar topiladi, turlarning ma'lumoti yangilanadi
 
 Ishga tushish vaqti `.env.production` dagi `CREATE_SCHEDULE` va `UPDATE_SCHEDULE`
-bilan belgilanadi (`PIPELINE_TIMEZONE` bo'yicha). Vergul bilan bir nechta vaqt
-yozish mumkin, masalan `CREATE_SCHEDULE=08:00,14:00,20:00`. Boshlang'ich qiymat
-kuniga bir marta; oqim o'sganda chastotani oshirish mumkin.
+bilan belgilanadi (`PIPELINE_TIMEZONE` bo'yicha):
+
+| Shakl | Ma'nosi |
+|---|---|
+| `20:00` | aniq vaqt |
+| `*:10` | har soat, 10-daqiqada |
+| `*/2:10` | har 2 soatda |
+| `08:00,14:00,20:00` | vergul bilan bir nechta vaqt |
+
+Ikkala jobni bir daqiqaga qo'ymang — `create` va `update` navbatni baham
+ko'radi. Masalan `CREATE_SCHEDULE=*:10`, `UPDATE_SCHEDULE=*:40`.
 
 Chastotani oshirish Claude xarajatini deyarli o'zgartirmaydi, chunki har post
 faqat bir marta tahlil qilinadi — faqat tizim prompti keshi tez-tez qayta
