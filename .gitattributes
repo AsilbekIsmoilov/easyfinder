@@ -1,0 +1,10 @@
+# Shell skriptlar Linux konteynerida ishlaydi — CRLF ularni buzadi
+# ("bad interpreter" xatosi). Platformadan qat'i nazar LF majburlanadi.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+
+# Binar fayllarga tegilmasin
+*.png binary
+*.jpg binary
+*.woff2 binary
