@@ -169,3 +169,74 @@ docker compose -f docker-compose.prod.yml restart api worker
 - [ ] `bot_setup` ishga tushirilgan
 - [ ] `curl /api/health` javob beryapti
 - [ ] Zaxira nusxa cron'ga qo'yilgan
+
+## 8. Railway'ga deploy (VPS'siz variant)
+
+Railway bitta repozitoriydan bir nechta xizmat ko'taradi va MySQL bilan
+Redis'ni tayyor beradi. Barcha xizmatlar bir xil `Dockerfile` dan quriladi,
+faqat start buyrug'i farq qiladi.
+
+### 8.1. Bazalarni qo'shish
+
+Yangi loyiha yarating va **New > Database** orqali **MySQL** va **Redis**
+qo'shing. Ular avtomatik sozlanadi.
+
+### 8.2. Uchta xizmat
+
+Har biri uchun **New > GitHub Repo** tanlab, shu repozitoriyni ulang. Keyin
+Settings > Deploy > **Custom Start Command** ni quyidagicha qo'ying:
+
+| Xizmat | Start Command | Izoh |
+|---|---|---|
+| `api` | `api` | Public domen shu xizmatga beriladi |
+| `worker` | `worker` | Public domen kerak emas |
+| `scheduler` | `scheduler` | Public domen kerak emas |
+
+`Dockerfile` dagi `ENTRYPOINT` shu so'zni argument sifatida qabul qiladi.
+
+### 8.3. O'zgaruvchilar
+
+Uchala xizmatga bir xil o'zgaruvchilar kerak. Bazalarga havola Railway
+sintaksisi bilan yoziladi:
+
+```
+DATABASE_URL=mysql+pymysql://${{MySQL.MYSQLUSER}}:${{MySQL.MYSQLPASSWORD}}@${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?charset=utf8mb4
+REDIS_URL=${{Redis.REDIS_URL}}
+```
+
+Qolganlari `.env.prod.example` dagidek: `TELEGRAM_*`, `CLAUDE_API`,
+`CREATE_SCHEDULE`, `UPDATE_SCHEDULE`, `ADMIN_CHAT_ID`, `ADMIN_JOB_KEY`.
+
+Ikkita farq bor:
+
+- `RUN_STARTUP_MIGRATIONS=true` — **faqat `api` xizmatida**. Railway'da alohida
+  `migrate` bosqichi yo'q, shuning uchun jadvallar API ishga tushganda yaratiladi.
+  Worker va scheduler'da `false` qoldiring, aks holda uchtasi bir vaqtda
+  migratsiya qilishga urinadi.
+- `PORT` — Railway o'zi beradi, qo'lda yozmang.
+
+### 8.4. Rasmlar uchun volume
+
+Telegram'dan yuklangan rasmlar diskda saqlanadi. `api` va `worker` xizmatlariga
+**Settings > Volumes** orqali `/app/media` yo'liga volume ulang, aks holda har
+deployda rasmlar yo'qoladi.
+
+### 8.5. Domen
+
+`api` xizmatida **Settings > Networking > Custom Domain** — domeningizni
+kiriting va ko'rsatilgan CNAME yozuvini domen provayderida qo'shing.
+Sertifikat avtomatik olinadi.
+
+Domen ishlaganidan keyin webhook va menu tugmasini ro'yxatdan o'tkazing:
+
+```bash
+python -m app.bot_setup https://sizning-domen.uz
+```
+
+`TELEGRAM_WEBAPP_URL` ni ham shu manzilga yangilang.
+
+### 8.6. Eslatma
+
+Railway soatlik hisoblaydi. Uchta xizmat + MySQL + Redis taxminan
+**$10–20/oy** turadi. Xuddi shu stack oddiy VPS'da `docker-compose.prod.yml`
+bilan **$5/oy** ga tushadi.

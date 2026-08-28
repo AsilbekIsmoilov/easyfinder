@@ -7,11 +7,12 @@ case "${1:-api}" in
     exec python -c "from datetime import date; from app.db import init_db, cleanup_expired_tours; init_db(); print('expired removed:', cleanup_expired_tours(date.today().isoformat()))"
     ;;
   api)
-    echo "Starting API with ${WEB_CONCURRENCY:-3} workers..."
+    # PORT ni platforma beradi (Railway, Render, Fly). Berilmasa 8000.
+    echo "Starting API on port ${PORT:-8000} with ${WEB_CONCURRENCY:-2} workers..."
     exec python -m uvicorn app.main:app \
       --host 0.0.0.0 \
-      --port 8000 \
-      --workers "${WEB_CONCURRENCY:-3}" \
+      --port "${PORT:-8000}" \
+      --workers "${WEB_CONCURRENCY:-2}" \
       --proxy-headers \
       --forwarded-allow-ips="*"
     ;;
