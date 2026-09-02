@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.mysql import insert as mysql_insert, match as mysql_match
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from .auth import current_user
+from .auth import current_user, require_telegram_user
 from .analytics import analytics_summary, record_activity, touch_user
 from .notifications import handle_bot_update, subscribe, webhook_secret
 from .db import (
@@ -33,12 +33,25 @@ FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 MEDIA_DIR = Path(__file__).resolve().parents[1] / "media"
 FILTER_CACHE_TTL = settings.cache_ttl_seconds
 
-app = FastAPI(title="Tour Finder API")
+def cors_origins() -> list[str]:
+    """API ni faqat o'z domenimiz va Telegram web mijozi chaqira olsin.
+
+    Ochiq `*` bilan istalgan sayt foydalanuvchi brauzeridan API ga so'rov
+    yubora olardi. TELEGRAM_WEBAPP_URL sozlanmagan bo'lsa (lokal ishlab
+    chiqish) cheklov qo'llanmaydi.
+    """
+    configured = (settings.telegram_webapp_url or "").strip().rstrip("/")
+    if not configured:
+        return ["*"]
+    return [configured, "https://web.telegram.org"]
+
+
+app = FastAPI(title="EasyFinder API")
 admin_key_header = APIKeyHeader(name="X-Admin-Key", scheme_name="AdminKey", auto_error=False)
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins(),
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
@@ -52,7 +65,10 @@ async def process_time_header(request: Request, call_next):
     return response
 
 
-@app.get("/api/health")
+# Monitoring xizmatlari odatda HEAD yuboradi. Faqat GET ro'yxatdan o'tgan
+# bo'lsa, HEAD statik fayllar mount'iga tushib 404 qaytaradi va sayt "o'lik"
+# ko'rinadi.
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health() -> dict:
     database_ok = False
     try:
@@ -576,7 +592,7 @@ def register_view(tour_id: int, request: Request) -> dict:
 
 @app.post("/api/tours/{tour_id}/like")
 def toggle_like(tour_id: int, request: Request) -> dict:
-    user = current_user(request)
+    user = require_telegram_user(request)
     _enforce_rate(user.key, "like", 30)
     with SessionLocal() as db:
         _require_tour(db, tour_id)
@@ -610,7 +626,7 @@ def list_comments(tour_id: int, request: Request) -> dict:
 
 @app.post("/api/tours/{tour_id}/comments")
 async def create_comment(tour_id: int, payload: CommentInput, request: Request) -> dict:
-    user = current_user(request)
+    user = require_telegram_user(request)
     _enforce_rate(user.key, "comment", 10, 300)
     text_value = payload.text.strip()
     if not text_value:
@@ -679,7 +695,7 @@ def list_feedback(tour_id: int, request: Request) -> dict:
 
 @app.post("/api/tours/{tour_id}/feedback")
 def create_feedback(tour_id: int, payload: CommentInput, request: Request) -> dict:
-    user = current_user(request)
+    user = require_telegram_user(request)
     _enforce_rate(user.key, "feedback", 10, 300)
     text_value = payload.text.strip()
     if not text_value:

@@ -23,6 +23,12 @@ class AppUser:
 
 
 def current_user(request: Request) -> AppUser:
+    """O'qish va yengil amallar uchun: Telegram yoki anonim viewer.
+
+    Anonim kalit brauzerdan keladi va uni soxtalashtirish mumkin. Shuning
+    uchun u faqat ko'rish, statistika va shaxsiy sozlamalar uchun yetarli.
+    Kontent yaratadigan amallarda `require_telegram_user` ishlatiladi.
+    """
     init_data = request.headers.get("X-Telegram-Init-Data", "")
     if init_data:
         return _telegram_user(init_data)
@@ -31,6 +37,23 @@ def current_user(request: Request) -> AppUser:
     if not re.fullmatch(r"[A-Za-z0-9_-]{12,80}", anonymous):
         raise HTTPException(status_code=401, detail="Telegram initData yoki viewer ID kerak")
     return AppUser(key=f"anon:{anonymous}", display_name="Anonim")
+
+
+def require_telegram_user(request: Request) -> AppUser:
+    """Faqat imzolangan Telegram foydalanuvchisi.
+
+    Like, comment va feedback shu yerdan o'tadi. Anonim kalit brauzer
+    tomonidan yaratiladi va uni istalgan odam o'zgartira oladi — bunday
+    kalit bilan soxta layk qo'yish yoki boshqa nom ostida kanalga comment
+    yozish mumkin bo'lardi.
+    """
+    init_data = request.headers.get("X-Telegram-Init-Data", "")
+    if not init_data:
+        raise HTTPException(
+            status_code=401,
+            detail="Bu amal uchun Telegram orqali kirish kerak",
+        )
+    return _telegram_user(init_data)
 
 
 def _telegram_user(init_data: str) -> AppUser:
