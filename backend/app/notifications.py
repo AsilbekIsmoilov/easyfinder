@@ -13,6 +13,7 @@ from sqlalchemy import select
 from .bot_setup import bot_api
 from .config import settings
 from .db import NotificationSubscriber, SessionLocal, Tour  # noqa: F401  (Tour update hisobotida)
+from .services import rate_allowed
 
 log = logging.getLogger(__name__)
 
@@ -140,14 +141,27 @@ def _admin_chats() -> list[str]:
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
+LIMIT_ALERT_WINDOW = 6 * 3600   # bir xil ogohlantirish shu oraliqda bir marta
+
+
 def notify_limit_reached(reason: str, *, stage: str, test: bool = False) -> None:
-    """Claude ishlamay qolganda adminni ogohlantiradi."""
+    """Claude ishlamay qolganda adminni ogohlantiradi.
+
+    Soatlik jadvalda kredit tugagan bo'lsa har yurish xato beradi. Har safar
+    xabar yuborilsa kuniga 24 ta bir xil ogohlantirish keladi va u shovqinga
+    aylanib, e'tibordan chiqib ketadi. Shuning uchun oynada bir marta.
+    """
     chats = _admin_chats()
     if not chats:
         log.warning("ADMIN_CHAT_ID sozlanmagan — limit haqida xabar yuborilmadi: %s", reason)
         return
 
-    label = "Create (20:00)" if stage == "create" else "Update (21:00)"
+    if not test and not rate_allowed("alert:claude-limit", 1, LIMIT_ALERT_WINDOW):
+        log.warning("limit ogohlantirishi cheklandi (oxirgi %d soat ichida yuborilgan): %s",
+                    LIMIT_ALERT_WINDOW // 3600, reason[:120])
+        return
+
+    label = "Create" if stage == "create" else "Update"
     short = escape(reason[:300])
     prefix = "🧪 <b>SINOV XABARI</b>\n\n" if test else ""
     text = prefix + (
