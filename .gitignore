@@ -13,3 +13,6 @@ __pycache__/
 .*.pid
 backend/media/
 backups/
+
+# Lokal tunnel binari (Windows) — serverda kerak emas, 51 MB
+backend/tools/
