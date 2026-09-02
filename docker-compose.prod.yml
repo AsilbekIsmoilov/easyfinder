@@ -57,6 +57,10 @@ services:
       - "8000"
     volumes:
       - ./backend/media:/app/media
+      # Frontend diskdan o'qiladi. Aks holda u obraz ichiga qotib qoladi va
+      # har HTML/CSS o'zgarishi uchun to'liq rebuild kerak bo'ladi.
+      # Faqat o'qish uchun — konteyner unga yozmaydi.
+      - ./frontend:/frontend:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
