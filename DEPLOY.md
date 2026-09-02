@@ -84,6 +84,27 @@ python -m app.scraper.telegram --login
 
 ## 2. Ishga tushirish
 
+### 2.1. Media papkasi ruxsati
+
+Konteyner ichida ilova `app` foydalanuvchisi sifatida ishlaydi, `backend/media`
+esa hostda root nomidan yaratiladi (`git clone` root bilan bajarilsa). Bu holda
+scraper rasm saqlay olmaydi va `create` jobi shu xato bilan yiqiladi:
+
+```
+PermissionError: [Errno 13] Permission denied: '/app/media/telegram'
+```
+
+Shuning uchun konteyner ko'tarilgandan keyin bir marta:
+
+```bash
+APP_UID=$(docker compose -f docker-compose.prod.yml exec -T api id -u app | tr -d '')
+APP_GID=$(docker compose -f docker-compose.prod.yml exec -T api id -g app | tr -d '')
+mkdir -p backend/media/telegram
+chown -R "$APP_UID:$APP_GID" backend/media
+```
+
+### 2.2. Ko'tarish
+
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
@@ -234,6 +255,7 @@ docker compose -f docker-compose.prod.yml restart api worker
 - [ ] `TELEGRAM_WEBAPP_URL` domenga yangilangan
 - [ ] `bot_setup` ishga tushirilgan, `getWebhookInfo` da xato yo'q
 - [ ] Botda `/start` ishlaydi va Mini App ochiladi
+- [ ] `backend/media` konteyner foydalanuvchisiga tegishli (2.1-band)
 - [ ] Zaxira nusxa cron'ga qo'yilgan
 
 Birinchi yurishdan keyin katalog to'lishi uchun:
