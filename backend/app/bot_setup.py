@@ -38,7 +38,7 @@ def setup_menu(webapp_url: str) -> str:
     bot_api("setWebhook", {
         "url": webapp_url.rstrip("/") + "/api/telegram/webhook",
         "secret_token": secret,
-        "allowed_updates": ["message"],
+        "allowed_updates": ["message", "inline_query"],
         "drop_pending_updates": False,
     })
     bot_api(
