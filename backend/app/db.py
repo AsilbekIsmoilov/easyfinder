@@ -81,6 +81,11 @@ class Tour(Base):
     )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     raw_post_id: Mapped[int] = mapped_column(Integer, index=True)
+    # Kanal bir turni bir necha marta e'lon qiladi. Har post alohida tur
+    # yaratadi, shuning uchun eskilari takror deb belgilanadi va API ularni
+    # ko'rsatmaydi. O'chirilmaydi: post qaytib kelsa yoki eng yangisi
+    # eskirsa, qayta tiklanishi mumkin.
+    is_duplicate: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     source: Mapped[str] = mapped_column(String(32))
     channel: Mapped[str] = mapped_column(String(128))
@@ -259,6 +264,14 @@ def init_db() -> None:
     if "reply_to_id" not in feedback_columns:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE tour_feedback ADD COLUMN reply_to_id INTEGER"))
+    # Har ikkala bazada ham kerak: MySQL uchun quyidagi blok `return` bilan
+    # tugaydi, shuning uchun bu tekshiruv undan OLDIN turishi shart.
+    tour_columns = {c["name"] for c in inspect(engine).get_columns("tours")}
+    if "is_duplicate" not in tour_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE tours ADD COLUMN is_duplicate BOOLEAN NOT NULL DEFAULT 0"))
+            connection.execute(text("CREATE INDEX ix_tours_is_duplicate ON tours (is_duplicate)"))
+
     if not settings.database_url.startswith("sqlite"):
         if engine.dialect.name == "mysql":
             index_names = {item["name"] for item in inspect(engine).get_indexes("tours")}

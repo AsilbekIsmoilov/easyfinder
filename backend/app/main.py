@@ -20,7 +20,6 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from .auth import current_user, require_telegram_user
 from .analytics import analytics_summary, record_activity, touch_user
-from .inline import handle_inline_query
 from .notifications import handle_bot_update, subscribe, webhook_secret
 from .db import (
     RawPost, SessionLocal, Tour, TourComment, TourFeedback, TourLike, TourView, UserActivity, UserPreference,
@@ -98,6 +97,8 @@ def strict_tour_conditions() -> list:
         Tour.price_amount.is_not(None), Tour.price_amount > 0,
         Tour.price_currency.is_not(None), Tour.price_currency != "",
         Tour.departure_date.is_not(None), Tour.departure_date != "",
+        # Kanal bir turni qayta e'lon qilganda faqat eng yangisi ko'rsatiladi.
+        Tour.is_duplicate.is_(False),
     ]
 
 @app.on_event("startup")
@@ -167,12 +168,6 @@ def telegram_webhook(update: dict, request: Request) -> dict:
     supplied = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
     if not supplied or not hmac.compare_digest(supplied, webhook_secret()):
         raise HTTPException(status_code=403, detail="Invalid Telegram webhook secret")
-
-    # Inline so'rov ("@izyfinderbot antalya") alohida ishlovchiga ketadi.
-    if "inline_query" in update:
-        handle_inline_query(update["inline_query"])
-        return {"ok": True}
-
     handle_bot_update(update)
     return {"ok": True}
 
