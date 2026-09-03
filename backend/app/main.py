@@ -97,6 +97,8 @@ def strict_tour_conditions() -> list:
         Tour.price_amount.is_not(None), Tour.price_amount > 0,
         Tour.price_currency.is_not(None), Tour.price_currency != "",
         Tour.departure_date.is_not(None), Tour.departure_date != "",
+        # Kanal bir turni qayta e'lon qilganda faqat eng yangisi ko'rsatiladi.
+        Tour.is_duplicate.is_(False),
     ]
 
 @app.on_event("startup")
