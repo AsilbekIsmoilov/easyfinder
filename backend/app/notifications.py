@@ -86,7 +86,13 @@ def statistics_message(*, reason: str, scraped: int = 0, processed: int = 0, cre
         intro = "Siz uchun Telegram kanallaridagi dolzarb sayohat takliflarini bir joyga jamladik."
     else:
         header = "✅ <b>EasyFinder(Beta) yangilandi</b>"
-        intro = f"Yangi postlar: <b>{scraped}</b> · Qayta ishlangan: <b>{processed}</b> · Yangilangan turlar: <b>{created}</b>"
+        # "Qayta ishlangan" tahrir deb tushunilardi; aslida bu Claude tahlil
+        # qilgan postlar soni. Yozuvlar aniqlashtirildi.
+        intro = (
+            f"Kanallardan olindi: <b>{scraped}</b> ta post · "
+            f"tahlil qilindi: <b>{processed}</b> · "
+            f"katalogga qo'shildi: <b>{created}</b> ta tur"
+        )
 
     lines = [header, "", intro, "", f"📊 <b>Faol turlar: {stats['active']} ta</b>", "", "🌍 <b>Davlatlar bo‘yicha:</b>"]
     if stats["countries"]:

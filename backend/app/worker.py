@@ -53,8 +53,10 @@ def run_create() -> None:
     if result.unavailable:
         notify_limit_reached(result.unavailable, stage="create")
         return
-    if result.created and settings.pipeline_notifications_enabled:
-        notify_pipeline(scraped=scraped, processed=result.seen, created=result.created)
+    # `added` — aynan yangi qo'shilgan turlar. `created` ga yangilangan
+    # qatorlar ham kiradi, xabarda esa "qo'shildi" deb yozilgan.
+    if result.added and settings.pipeline_notifications_enabled:
+        notify_pipeline(scraped=scraped, processed=result.seen, created=result.added)
 
 
 def run_update() -> None:
