@@ -136,11 +136,6 @@ async def scrape(full: bool = False) -> int:
 
                 count = 0
                 channel_images = 0
-                # Avval oynani to'liq o'qib olamiz. Sabab: kanallar albom
-                # (media group) tashlaganda matn bitta xabarda, rasmlar esa
-                # qo'shni matnsiz xabarlarda bo'ladi. Ularni oldindan bilmasak,
-                # matnli post rasmsiz qolib ketadi.
-                window = []
                 async for msg in client.iter_messages(
                     entity, limit=settings.scrape_limit or None, min_id=min_id
                 ):
@@ -150,16 +145,6 @@ async def scrape(full: bool = False) -> int:
                         and msg.date.date() < date.today() - timedelta(days=settings.scrape_history_days)
                     ):
                         break
-                    window.append(msg)
-
-                # albom -> undagi birinchi rasmli xabar
-                album_photo = {}
-                for msg in window:
-                    gid = getattr(msg, "grouped_id", None)
-                    if gid and msg.photo and gid not in album_photo:
-                        album_photo[gid] = msg
-
-                for msg in window:
                     if not msg.message:
                         continue
                     if f"{channel}:{msg.id}" in known_ids:
@@ -169,24 +154,17 @@ async def scrape(full: bool = False) -> int:
                     # hech qanday parser ishlatilmaydi.
                     if settings.scrape_prefilter and not _worth_storing(msg.message):
                         continue
-                    # Rasm shu xabarda bo'lmasa, o'sha albomdagi rasmni olamiz.
-                    source_msg = msg
-                    if not msg.photo:
-                        gid = getattr(msg, "grouped_id", None)
-                        if gid and gid in album_photo:
-                            source_msg = album_photo[gid]
-
                     photo_url = None
-                    if source_msg.photo:
-                        filename = f"{channel}_{source_msg.id}.jpg"
+                    if msg.photo:
+                        filename = f"{channel}_{msg.id}.jpg"
                         target = MEDIA_DIR / filename
                         try:
-                            downloaded = await client.download_media(source_msg.photo, file=str(target))
+                            downloaded = await client.download_media(msg.photo, file=str(target))
                             if downloaded:
                                 photo_url = f"/media/telegram/{Path(downloaded).name}"
                                 channel_images += 1
                         except Exception as exc:
-                            log.warning("rasm yuklanmadi %s:%s: %s", channel, source_msg.id, exc)
+                            log.warning("rasm yuklanmadi %s:%s: %s", channel, msg.id, exc)
 
                     db.add(
                         RawPost(

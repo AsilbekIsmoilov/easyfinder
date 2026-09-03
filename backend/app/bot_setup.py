@@ -41,14 +41,6 @@ def setup_menu(webapp_url: str) -> str:
         "allowed_updates": ["message"],
         "drop_pending_updates": False,
     })
-    # Buyruqlar Telegram'dagi "/" menyusida ko'rinadi.
-    bot_api("setMyCommands", {
-        "commands": [
-            {"command": "start", "description": "Katalogni ochish"},
-            {"command": "help", "description": "Bot nima qiladi"},
-            {"command": "stop", "description": "Xabarlarni to'xtatish"},
-        ]
-    })
     bot_api(
         "setChatMenuButton",
         {

@@ -122,99 +122,19 @@ def send_statistics(chat_id: str, *, reason: str, scraped: int = 0, processed: i
     })
 
 
-def unsubscribe(chat_id: str) -> bool:
-    """Obunani bekor qiladi. Yozuv o'chirilmaydi — /start bilan qayta yoqiladi."""
-    with SessionLocal() as db:
-        item = db.scalar(
-            select(NotificationSubscriber).where(NotificationSubscriber.chat_id == chat_id)
-        )
-        if not item or not item.enabled:
-            return False
-        item.enabled = False
-        db.commit()
-        return True
-
-
-HELP_TEXT = "\n".join([
-    "<b>EasyFinder nima qiladi?</b>",
-    "",
-    "Tur agentliklarining Telegram kanallaridagi e'lonlarni yig'ib, bitta "
-    "katalogga jamlaydi. Yo'nalish, narx va jo'nash sanasi bo'yicha qidirasiz.",
-    "",
-    "<b>Buyruqlar</b>",
-    "/start — katalogni ochish va yangi turlar haqida xabar olish",
-    "/help — shu yordam",
-    "/stop — xabarlarni to'xtatish",
-    "",
-    "Tur yoqsa, kartani bosing — e'lon bergan kanalga o'tasiz va bron "
-    "o'sha yerda bo'ladi.",
-    "",
-    "Biz tur sotmaymiz va agentlik emasmiz. Narx va shartlarni bron "
-    "qilishdan oldin asl kanaldan tekshiring.",
-    "",
-    "Savol yoki taklif: @imbackendeveloper",
-])
-
-UNKNOWN_TEXT = "\n".join([
-    "Bu buyruqni tushunmadim.",
-    "",
-    "Katalogni ochish uchun pastdagi tugmani bosing yoki /help yozing.",
-])
-
-STOP_ON = "\n".join([
-    "🔕 Xabarlar to'xtatildi.",
-    "",
-    "Katalog ochiq qoladi — istalgan vaqtda kirishingiz mumkin. "
-    "Xabarlarni qayta yoqish uchun /start yozing.",
-])
-
-STOP_ALREADY = "\n".join([
-    "Xabarlar allaqachon o'chirilgan.",
-    "",
-    "Qayta yoqish uchun /start yozing.",
-])
-
-
-def _reply(chat_id: str, text: str, with_button: bool = True) -> None:
-    payload = {
-        "chat_id": chat_id, "text": text,
-        "parse_mode": "HTML", "disable_web_page_preview": True,
-    }
-    if with_button:
-        payload["reply_markup"] = {"inline_keyboard": [[_button()]]}
-    bot_api("sendMessage", payload)
-
-
 def handle_bot_update(update: dict) -> None:
     message = update.get("message") or {}
     text = (message.get("text") or "").strip()
+    if not text.startswith("/start"):
+        return
     chat = message.get("chat") or {}
     sender = message.get("from") or {}
     chat_id = str(chat.get("id") or "")
-    if not chat_id or not text:
+    if not chat_id:
         return
-
-    # "/stop@izyfinderbot" ko'rinishi ham keladi
-    command = text.split()[0].split("@")[0].lower()
-
-    if command == "/start":
-        display_name = " ".join(
-            filter(None, (sender.get("first_name"), sender.get("last_name")))
-        ) or "User"
-        subscribe(chat_id, display_name, sender.get("username"))
-        send_statistics(chat_id, reason="start")
-        return
-
-    if command == "/help":
-        _reply(chat_id, HELP_TEXT)
-        return
-
-    if command == "/stop":
-        was_on = unsubscribe(chat_id)
-        _reply(chat_id, STOP_ON if was_on else STOP_ALREADY, with_button=False)
-        return
-
-    _reply(chat_id, UNKNOWN_TEXT)
+    display_name = " ".join(filter(None, (sender.get("first_name"), sender.get("last_name")))) or "User"
+    subscribe(chat_id, display_name, sender.get("username"))
+    send_statistics(chat_id, reason="start")
 
 
 def _admin_chats() -> list[str]:
