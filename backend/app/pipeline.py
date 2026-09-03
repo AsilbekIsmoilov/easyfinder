@@ -47,68 +47,6 @@ class PipelineResult(NamedTuple):
     removed: int                  # olib tashlangan eskirgan variantlar
 
 
-def mark_duplicates() -> int:
-    """Bir xil turning takroriy nusxalarini belgilaydi.
-
-    Kanal ko'pincha bitta turni bir necha hafta davomida qayta e'lon qiladi.
-    Har post alohida `raw_post_id` bo'lgani uchun alohida tur yaratiladi va
-    katalogda o'nlab bir xil karta paydo bo'ladi.
-
-    Guruhlash kaliti: (KANAL, davlat, ketish sanasi, narx, valyuta). Har
-    guruhda faqat ENG YANGI post qoldiriladi, qolganlari `is_duplicate=True`
-    bo'ladi. O'chirilmaydi — eng yangisi eskirsa yoki post o'chirilsa,
-    keyingi yurish yana eng yangisini tanlaydi.
-
-    KANAL kalitda bo'lishi SHART. Takror faqat bitta kanal ichida hisoblanadi.
-    Ikki agentlik bir xil turni sotishi odatiy hol — ular bitta ulgurji
-    operatordan oladi. Kanal hisobga olinmasa, biror agentlikning taklifi
-    raqobatchisi tufayli yashirinib qolardi: foydalanuvchi narxlarni
-    taqqoslay olmaydi, kanal egasi esa o'z turini katalogda ko'rmaydi.
-
-    Shahar esa ataylab kalitga KIRMAYDI: u har postda turlicha ajraladi
-    ("Bali + Kuala-Lumpur + Singapur", "Bali + Kuala Lumpur", "Bali") va
-    kalitga qo'shilsa bir xil tur yana bir necha guruhga bo'linib ketadi.
-
-    Qaytaradi: belgilangan takrorlar soni.
-    """
-    with SessionLocal() as db:
-        tours = db.scalars(select(Tour).order_by(Tour.id)).all()
-
-        groups: dict[tuple, list[Tour]] = {}
-        for tour in tours:
-            key = (
-                (tour.channel or "").casefold(),
-                (tour.country or "").casefold(),
-                tour.departure_date or "",
-                float(tour.price_amount or 0),
-                (tour.price_currency or "").casefold(),
-            )
-            groups.setdefault(key, []).append(tour)
-
-        changed = 0
-        for members in groups.values():
-            if len(members) == 1:
-                keeper, rest = members[0], []
-            else:
-                # Eng yangi post g'olib: posted_at, keyin id bo'yicha.
-                members.sort(
-                    key=lambda t: (t.posted_at or datetime.min, t.id), reverse=True
-                )
-                keeper, rest = members[0], members[1:]
-
-            if keeper.is_duplicate:
-                keeper.is_duplicate = False
-                changed += 1
-            for other in rest:
-                if not other.is_duplicate:
-                    other.is_duplicate = True
-                    changed += 1
-
-        if changed:
-            db.commit()
-        return changed
-
-
 def process_pending(limit: int | None = 200) -> PipelineResult:
     """Qayta ishlanmagan postlarni Claude orqali o'tkazadi.
 
@@ -267,10 +205,6 @@ def process_pending(limit: int | None = 200) -> PipelineResult:
                 db.execute(delete(Tour).where(Tour.id.in_(stale_ids)))
             db.commit()
             done_ids.append(post.id)
-
-    marked = mark_duplicates()
-    if marked:
-        log.info("takrorlar qayta hisoblandi: %d o'zgarish", marked)
 
     cache_delete_pattern("tours:*")
     cache_delete_pattern("filters:*")
