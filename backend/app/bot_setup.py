@@ -42,13 +42,20 @@ def setup_menu(webapp_url: str) -> str:
         "drop_pending_updates": False,
     })
     # Buyruqlar Telegram'dagi "/" menyusida ko'rinadi.
-    bot_api("setMyCommands", {
-        "commands": [
-            {"command": "start", "description": "Katalogni ochish"},
-            {"command": "help", "description": "Bot nima qiladi"},
-            {"command": "stop", "description": "Xabarlarni to'xtatish"},
-        ]
-    })
+    public_commands = [
+        {"command": "start", "description": "Katalogni ochish"},
+        {"command": "help", "description": "Bot nima qiladi"},
+        {"command": "stop", "description": "Xabarlarni to'xtatish"},
+    ]
+    bot_api("setMyCommands", {"commands": public_commands})
+    # /all_users faqat admin chatida ko'rinadi — ommaviy menyuda kerak emas.
+    for chat_id in [part.strip() for part in settings.admin_chat_id.split(",") if part.strip()]:
+        bot_api("setMyCommands", {
+            "commands": public_commands + [
+                {"command": "all_users", "description": "Bazadagi hamma foydalanuvchi"},
+            ],
+            "scope": {"type": "chat", "chat_id": chat_id},
+        })
     bot_api(
         "setChatMenuButton",
         {

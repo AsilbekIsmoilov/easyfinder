@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from html import escape
 import hashlib
 import logging
@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from .bot_setup import bot_api
 from .config import settings
-from .db import NotificationSubscriber, SessionLocal, Tour  # noqa: F401  (Tour update hisobotida)
+from .db import AppUserRecord, NotificationSubscriber, SessionLocal, Tour  # noqa: F401  (Tour update hisobotida)
 from .services import rate_allowed
 
 log = logging.getLogger(__name__)
@@ -175,6 +175,96 @@ STOP_ALREADY = "\n".join([
 ])
 
 
+ALL_USERS_CHUNK = 3500      # Telegram xabar chegarasi 4096 — zaxira bilan
+ALL_USERS_MAX_ROWS = 500    # undan ko'pi chatda baribir o'qilmaydi
+
+SUBSCRIPTION_MARK = {True: "🔔", False: "🔕", None: "▫️"}
+
+
+def _all_users() -> list[dict]:
+    """Bazadagi hamma foydalanuvchi: mini app yozuvlari va bot obunachilari birga.
+
+    Bitta odam ikkala jadvalda ham bo'lishi mumkin (ilovani ochgan va botga
+    /start yozgan), shuning uchun Telegram ID bo'yicha birlashtiriladi — aks
+    holda ro'yxatda ikki marta chiqadi va hisob noto'g'ri ko'rinadi.
+    """
+    with SessionLocal() as db:
+        app_users = db.scalars(select(AppUserRecord)).all()
+        subscribers = db.scalars(select(NotificationSubscriber)).all()
+
+    rows: dict[str, dict] = {}
+    for user in app_users:
+        key = user.telegram_id or user.user_key
+        rows[key] = {
+            "telegram_id": user.telegram_id,
+            "display_name": user.display_name,
+            "username": user.username,
+            "enabled": None,          # botga /start yozmagan
+            "seen_at": user.first_seen_at,
+        }
+    for subscriber in subscribers:
+        row = rows.get(subscriber.chat_id)
+        if row is None:
+            rows[subscriber.chat_id] = {
+                "telegram_id": subscriber.chat_id,
+                "display_name": subscriber.display_name,
+                "username": subscriber.username,
+                "enabled": subscriber.enabled,
+                "seen_at": subscriber.created_at,
+            }
+            continue
+        row["enabled"] = subscriber.enabled
+        row["telegram_id"] = row["telegram_id"] or subscriber.chat_id
+        row["username"] = row["username"] or subscriber.username
+        if subscriber.created_at and (row["seen_at"] is None or subscriber.created_at < row["seen_at"]):
+            row["seen_at"] = subscriber.created_at
+
+    return sorted(rows.values(), key=lambda row: row["seen_at"] or datetime.min)
+
+
+def _user_line(index: int, row: dict) -> str:
+    parts = [f"{index}. <b>{escape(row['display_name'] or 'User')}</b>"]
+    if row["username"]:
+        parts.append(f"@{escape(row['username'])}")
+    if row["telegram_id"]:
+        parts.append(f"<code>{escape(str(row['telegram_id']))}</code>")
+    parts.append(SUBSCRIPTION_MARK[row["enabled"]])
+    if row["seen_at"]:
+        parts.append(row["seen_at"].strftime("%d.%m.%y"))
+    return " · ".join(parts)
+
+
+def all_users_messages() -> list[str]:
+    """/all_users javobi. Ro'yxat uzun bo'lsa bir nechta xabarga bo'linadi."""
+    rows = _all_users()
+    header = "\n".join([
+        f"👥 <b>Foydalanuvchilar: {len(rows)} ta</b>",
+        f"🔔 obuna: <b>{sum(1 for row in rows if row['enabled'] is True)}</b> · "
+        f"🔕 to'xtatgan: <b>{sum(1 for row in rows if row['enabled'] is False)}</b> · "
+        f"▫️ faqat ilova: <b>{sum(1 for row in rows if row['enabled'] is None)}</b>",
+    ])
+    if not rows:
+        return [header + "\n\nHozircha foydalanuvchi yo'q."]
+
+    shown = rows[:ALL_USERS_MAX_ROWS]
+    lines = [_user_line(index, row) for index, row in enumerate(shown, 1)]
+    if len(rows) > len(shown):
+        lines.append(f"… va yana {len(rows) - len(shown)} ta")
+
+    messages: list[str] = []
+    chunk = [header, ""]
+    size = len(header) + 1
+    for line in lines:
+        if chunk and size + len(line) + 1 > ALL_USERS_CHUNK:
+            messages.append("\n".join(chunk))
+            chunk, size = [], 0
+        chunk.append(line)
+        size += len(line) + 1
+    if chunk:
+        messages.append("\n".join(chunk))
+    return messages
+
+
 def _reply(chat_id: str, text: str, with_button: bool = True) -> None:
     payload = {
         "chat_id": chat_id, "text": text,
@@ -212,6 +302,16 @@ def handle_bot_update(update: dict) -> None:
     if command == "/stop":
         was_on = unsubscribe(chat_id)
         _reply(chat_id, STOP_ON if was_on else STOP_ALREADY, with_button=False)
+        return
+
+    if command == "/all_users":
+        # Faqat ADMIN_CHAT_ID uchun. Boshqasiga "tushunmadim" javobi ketadi —
+        # buyruq borligi ham bilinmasin.
+        if chat_id not in _admin_chats():
+            _reply(chat_id, UNKNOWN_TEXT)
+            return
+        for part in all_users_messages():
+            _reply(chat_id, part, with_button=False)
         return
 
     _reply(chat_id, UNKNOWN_TEXT)
