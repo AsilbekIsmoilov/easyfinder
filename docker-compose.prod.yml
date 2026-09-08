@@ -116,6 +116,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./backend/media:/srv/media:ro   # rasmlarni Caddy uzatadi
       - caddy_data:/data          # sertifikatlar shu yerda, o'chirmang
       - caddy_config:/config
     depends_on:

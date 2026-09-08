@@ -11,5 +11,16 @@
 		-Server
 	}
 
-	reverse_proxy api:8000
+	# Rasmlarni Python emas, Caddy uzatadi: fayl to'g'ridan-to'g'ri yadro
+	# orqali ketadi va api konteyneriga yuk tushmaydi. Cache-Control tufayli
+	# brauzer rasmni bir hafta saqlaydi — takroriy ochilishda so'rov bo'lmaydi.
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+		header Cache-Control "public, max-age=604800"
+	}
+
+	handle {
+		reverse_proxy api:8000
+	}
 }
