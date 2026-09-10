@@ -8,11 +8,14 @@ import hashlib
 import logging
 import time
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .bot_setup import bot_api
 from .config import settings
-from .db import AppUserRecord, NotificationSubscriber, SessionLocal, Tour  # noqa: F401  (Tour update hisobotida)
+from .db import (  # noqa: F401  (Tour update hisobotida)
+    AppUserRecord, NotificationSubscriber, SessionLocal, Tour, TourComment, TourLike, TourView,
+    cutoff_date, strict_tour_conditions,
+)
 from .services import rate_allowed
 
 log = logging.getLogger(__name__)
@@ -265,6 +268,97 @@ def all_users_messages() -> list[str]:
     return messages
 
 
+CHANNEL_REPORT_TOP = 3
+
+
+def _price(amount: float | None, currency: str | None) -> str:
+    if not amount or not currency:
+        return "narxsiz"
+    symbol = {"USD": "$", "EUR": "€"}.get(currency, currency + " ")
+    return f"{symbol}{amount:,.0f}".replace(",", " ")
+
+
+def _channel_stats() -> list[dict]:
+    """Har kanal kesimida: katalogdagi turlar, ko'rish, like va izohlar.
+
+    Faqat hozir katalogda KO'RINADIGAN turlar hisoblanadi — takror deb
+    belgilangani va sanasi o'tgani kirmaydi. Sabab: admin ilovani ochganda
+    aynan shu turlarni ko'radi, hisobot esa u ko'rgan narsaga mos kelishi
+    kerak, aks holda raqamlar tushunarsiz bo'ladi.
+    """
+    base = [Tour.departure_date >= cutoff_date(), *strict_tour_conditions()]
+    with SessionLocal() as db:
+        tours = db.scalars(select(Tour).where(*base)).all()
+        if not tours:
+            return []
+        ids = [tour.id for tour in tours]
+
+        def totals(model) -> dict[int, int]:
+            rows = db.execute(
+                select(model.tour_id, func.count())
+                .where(model.tour_id.in_(ids))
+                .group_by(model.tour_id)
+            ).all()
+            return {tour_id: count for tour_id, count in rows}
+
+        views, likes, comments = totals(TourView), totals(TourLike), totals(TourComment)
+
+    channels: dict[str, dict] = {}
+    for tour in tours:
+        name = tour.channel or "—"
+        item = channels.setdefault(name, {
+            "channel": name, "tours": 0, "views": 0, "likes": 0, "comments": 0, "top": [],
+        })
+        seen = views.get(tour.id, 0)
+        item["tours"] += 1
+        item["views"] += seen
+        item["likes"] += likes.get(tour.id, 0)
+        item["comments"] += comments.get(tour.id, 0)
+        item["top"].append((seen, tour))
+
+    for item in channels.values():
+        item["top"].sort(key=lambda pair: (pair[0], pair[1].id), reverse=True)
+        item["top"] = item["top"][:CHANNEL_REPORT_TOP]
+
+    return sorted(channels.values(), key=lambda item: item["views"], reverse=True)
+
+
+def channel_report_messages() -> list[str]:
+    """/channels javobi: har kanal uchun ALOHIDA xabar.
+
+    Ataylab bitta ro'yxat emas — har blok o'sha kanal adminiga to'g'ridan-
+    to'g'ri uzatib yuborilishi uchun mustaqil xabar bo'lib chiqadi.
+    """
+    stats = _channel_stats()
+    if not stats:
+        return ["📊 Katalogda hozircha tur yo'q."]
+
+    today = date.today().strftime("%d.%m.%Y")
+    messages = []
+    for item in stats:
+        lines = [
+            f"📊 <b>@{escape(item['channel'])}</b> — EasyFinder hisoboti",
+            f"<i>{today} holatiga</i>",
+            "",
+            f"📦 Katalogdagi turlaringiz: <b>{item['tours']}</b> ta",
+            f"👁 Ko'rishlar: <b>{item['views']}</b>",
+            f"❤️ Yoqtirishlar: <b>{item['likes']}</b>",
+            f"💬 Izohlar: <b>{item['comments']}</b>",
+        ]
+        if item["views"]:
+            lines += ["", "🔝 <b>Eng ko'p qiziqish uyg'otgan turlaringiz:</b>"]
+            for index, (seen, tour) in enumerate(item["top"], 1):
+                if not seen:
+                    break
+                route = " · ".join(filter(None, (tour.country, tour.city))) or "Tur"
+                lines.append(
+                    f"{index}. {escape(route)} — {_price(tour.price_amount, tour.price_currency)}"
+                    f" · {seen} ko'rish"
+                )
+        messages.append("\n".join(lines))
+    return messages
+
+
 def _reply(chat_id: str, text: str, with_button: bool = True) -> None:
     payload = {
         "chat_id": chat_id, "text": text,
@@ -311,6 +405,15 @@ def handle_bot_update(update: dict) -> None:
             _reply(chat_id, UNKNOWN_TEXT)
             return
         for part in all_users_messages():
+            _reply(chat_id, part, with_button=False)
+        return
+
+    if command == "/channels":
+        # Faqat admin uchun, /all_users bilan bir xil qoida.
+        if chat_id not in _admin_chats():
+            _reply(chat_id, UNKNOWN_TEXT)
+            return
+        for part in channel_report_messages():
             _reply(chat_id, part, with_button=False)
         return
 
