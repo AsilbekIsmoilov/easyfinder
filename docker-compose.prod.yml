@@ -1,7 +1,18 @@
+# Har konteyner logi 10 MB x 3 fayl bilan cheklanadi (jami eng ko'pi 180 MB).
+# Docker'ning standart sozlamasida json-file logi cheksiz o'sadi va diskni
+# sekin-asta to'ldiradi — serverda atigi 26 GB bo'sh joy bor.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
   mysql:
     image: mysql:8.0
     restart: unless-stopped
+    <<: *logging
     env_file: .env.mysql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
@@ -17,6 +28,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    <<: *logging
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
@@ -33,6 +45,7 @@ services:
       dockerfile: Dockerfile
     command: ["migrate"]
     restart: "no"
+    <<: *logging
     env_file: backend/.env.production
     environment:
       RUN_STARTUP_MIGRATIONS: "false"
@@ -47,6 +60,7 @@ services:
       dockerfile: Dockerfile
     command: ["api"]
     restart: unless-stopped
+    <<: *logging
     env_file: backend/.env.production
     environment:
       RUN_STARTUP_MIGRATIONS: "false"
@@ -80,6 +94,7 @@ services:
       dockerfile: Dockerfile
     command: ["worker"]
     restart: unless-stopped
+    <<: *logging
     env_file: backend/.env.production
     environment:
       RUN_STARTUP_MIGRATIONS: "false"
@@ -98,6 +113,7 @@ services:
       dockerfile: Dockerfile
     command: ["scheduler"]
     restart: unless-stopped
+    <<: *logging
     env_file: backend/.env.production
     environment:
       RUN_STARTUP_MIGRATIONS: "false"
@@ -110,6 +126,7 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    <<: *logging
     env_file: .env.caddy
     ports:
       - "80:80"
@@ -128,6 +145,7 @@ services:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate run
     restart: unless-stopped
+    <<: *logging
     env_file: backend/.env.production
     depends_on:
       api:
