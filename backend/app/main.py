@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 import hashlib
 import hmac
 import mimetypes
@@ -24,7 +24,7 @@ from .inline import handle_inline_query
 from .notifications import handle_bot_update, subscribe, webhook_secret
 from .db import (
     RawPost, SessionLocal, Tour, TourComment, TourFeedback, TourLike, TourView, UserActivity, UserPreference,
-    cleanup_expired_tours, init_db,
+    cleanup_expired_tours, cutoff_date, init_db, strict_tour_conditions,
 )
 from .telegram_comments import send_source_comment
 from .services import cache_get, cache_set, rate_allowed, redis_client
@@ -83,22 +83,6 @@ def health() -> dict:
         raise HTTPException(status_code=503, detail="Database unavailable")
     return {"status": "ok", "database": database_ok, "redis": redis_ok}
 
-def cutoff_date() -> str:
-    return (date.today() + timedelta(days=4)).isoformat()
-
-def strict_tour_conditions() -> list:
-    """Mini App faqat uchta majburiy maydon aniq bo'lgan turlarni ko'rsatadi:
-    yo'nalish (davlat yoki shahar), narx va ketish sanasi.
-
-    Davomiylik ixtiyoriy — aniqlanmasa kartada bo'sh turadi. Qaytish sanasi,
-    ovqatlanish va mehmonxona umuman ajratilmaydi.
-    """
-    return [
-        Tour.country.is_not(None), Tour.country != "",
-        Tour.price_amount.is_not(None), Tour.price_amount > 0,
-        Tour.price_currency.is_not(None), Tour.price_currency != "",
-        Tour.departure_date.is_not(None), Tour.departure_date != "",
-    ]
 
 @app.on_event("startup")
 def _startup() -> None:

@@ -12,13 +12,12 @@ Telegram cheklovlari, e'tiborga olingan:
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
 
 from sqlalchemy import or_, select
 
 from .bot_setup import bot_api
 from .config import settings
-from .db import SessionLocal, Tour
+from .db import SessionLocal, Tour, cutoff_date, strict_tour_conditions
 
 log = logging.getLogger(__name__)
 
@@ -62,13 +61,7 @@ def _money(amount: float | None, currency: str | None) -> str:
 
 def _search(query: str) -> list[Tour]:
     """Faol turlar orasidan qidiradi. Bo'sh so'rovda eng arzonlari chiqadi."""
-    cutoff = (date.today() + timedelta(days=4)).isoformat()
-    conditions = [
-        Tour.departure_date >= cutoff,
-        Tour.country.is_not(None), Tour.country != "",
-        Tour.price_amount.is_not(None), Tour.price_amount > 0,
-        Tour.price_currency.is_not(None), Tour.price_currency != "",
-    ]
+    conditions = [Tour.departure_date >= cutoff_date(), *strict_tour_conditions()]
 
     term = query.strip()
     if term:
