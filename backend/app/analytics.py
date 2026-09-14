@@ -46,16 +46,20 @@ def _period_boundaries() -> tuple[datetime, datetime, datetime]:
 
 
 def total_users() -> int:
-    """Botning jami foydalanuvchilari — ilovani ochganlar va /start bosganlar birga.
+    """Botning jami foydalanuvchilari — Telegram orqali kelgan noyob odamlar.
 
-    Bitta odam ikkala jadvalda ham bo'lishi mumkin, shuning uchun Telegram ID
-    bo'yicha birlashtiriladi (notifications._all_users bilan bir xil qoida).
-    Aks holda son ikki barobar ko'rinadi.
+    Ilovani Telegram ichida ochganlar va botga /start bosganlar birga; bitta
+    odam ikkala jadvalda bo'lsa Telegram ID bo'yicha bir marta sanaladi.
+
+    Anonim (brauzerdan kirgan, `telegram_id` bo'sh) yozuvlar ATAYLAB kirmaydi.
+    Ular bot foydalanuvchisi emas, ustiga kalit brauzerga bog'langan: bitta
+    odam telefon, kompyuter va yashirin oynadan kirsa uchta yozuv bo'ladi va
+    son sun'iy ko'tariladi.
     """
     # UNION (UNION ALL emas) takrorlarni bazaning o'zida olib tashlaydi —
     # Python'ga million qator emas, bitta raqam qaytadi.
     people = union(
-        select(func.coalesce(AppUserRecord.telegram_id, AppUserRecord.user_key)),
+        select(AppUserRecord.telegram_id).where(AppUserRecord.telegram_id.is_not(None)),
         select(NotificationSubscriber.chat_id),
     ).subquery("people")
     with SessionLocal() as db:
