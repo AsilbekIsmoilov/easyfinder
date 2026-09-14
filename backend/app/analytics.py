@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, union
 
 from .auth import AppUser
 from .config import settings
@@ -52,12 +52,14 @@ def total_users() -> int:
     bo'yicha birlashtiriladi (notifications._all_users bilan bir xil qoida).
     Aks holda son ikki barobar ko'rinadi.
     """
+    # UNION (UNION ALL emas) takrorlarni bazaning o'zida olib tashlaydi —
+    # Python'ga million qator emas, bitta raqam qaytadi.
+    people = union(
+        select(func.coalesce(AppUserRecord.telegram_id, AppUserRecord.user_key)),
+        select(NotificationSubscriber.chat_id),
+    ).subquery("people")
     with SessionLocal() as db:
-        app_rows = db.execute(select(AppUserRecord.telegram_id, AppUserRecord.user_key)).all()
-        chat_ids = db.scalars(select(NotificationSubscriber.chat_id)).all()
-    people = {telegram_id or user_key for telegram_id, user_key in app_rows}
-    people.update(chat_ids)
-    return len(people)
+        return db.scalar(select(func.count()).select_from(people)) or 0
 
 
 def analytics_summary() -> dict:
