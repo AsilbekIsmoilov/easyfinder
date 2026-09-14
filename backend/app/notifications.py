@@ -5,6 +5,8 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from html import escape
 import hashlib
+from pathlib import Path
+import re
 import logging
 import time
 
@@ -13,10 +15,10 @@ from sqlalchemy import func, select
 from .bot_setup import bot_api
 from .config import settings
 from .db import (  # noqa: F401  (Tour update hisobotida)
-    AppUserRecord, NotificationSubscriber, SessionLocal, Tour, TourComment, TourLike, TourView,
-    cutoff_date, strict_tour_conditions,
+    AppUserRecord, Channel, NotificationSubscriber, SessionLocal, Tour, TourComment, TourLike,
+    TourView, cutoff_date, normalize_channel, purge_channel, strict_tour_conditions,
 )
-from .services import rate_allowed
+from .services import cache_delete_pattern, rate_allowed
 
 log = logging.getLogger(__name__)
 
@@ -359,6 +361,134 @@ def channel_report_messages() -> list[str]:
     return messages
 
 
+# ---- Kanallarni boshqarish: /add, /block ---------------------------------
+
+# Telegram username qoidasi: harf bilan boshlanadi, 5-32 belgi, harf/raqam/_.
+USERNAME_RE = re.compile(r"^[a-z][a-z0-9_]{4,31}$")
+# main.py dagi MEDIA_DIR bilan bir xil: backend/media. Bu yerdan main import
+# qilib bo'lmaydi (u bizni import qiladi), shuning uchun yo'l qayta hisoblanadi.
+MEDIA_DIR = Path(__file__).resolve().parents[1] / "media"
+
+
+def _channel_list_text() -> str:
+    with SessionLocal() as db:
+        rows = db.scalars(select(Channel).order_by(Channel.status, Channel.username)).all()
+    active = [r.username for r in rows if r.status == "active"]
+    blocked = [r.username for r in rows if r.status == "blocked"]
+    lines = [f"📡 <b>Faol kanallar: {len(active)}</b>"]
+    lines += [f"• @{escape(u)}" for u in active] or ["— yo'q"]
+    if blocked:
+        lines += ["", f"🚫 <b>Bloklangan: {len(blocked)}</b>"]
+        lines += [f"• @{escape(u)}" for u in blocked]
+    return "\n".join(lines)
+
+
+CHANNEL_USAGE = "\n".join([
+    "Foydalanish:",
+    "<code>/add @kanal</code> — kanalni qo'shish va darhol tahlil qilish",
+    "<code>/block @kanal</code> — bloklash va barcha postlarini o'chirish",
+])
+
+
+def add_channel(raw: str, chat_id: str) -> str:
+    """Kanalni faollashtiradi va darhol yig'ib-tahlil qilishga navbatga qo'yadi.
+
+    Bloklangan kanal /add bilan qayta tiklanadi — alohida /unblock kerak emas.
+    Yig'ish api jarayonida EMAS, worker'da bo'ladi: Telethon sessiyasi bitta
+    joydan ulanishi kerak, ustiga bu bir necha daqiqa davom etishi mumkin.
+    """
+    username = normalize_channel(raw)
+    if not USERNAME_RE.fullmatch(username):
+        return f"❌ <code>{escape(raw)}</code> — noto'g'ri username.\n\n{CHANNEL_USAGE}"
+
+    with SessionLocal() as db:
+        item = db.scalar(select(Channel).where(Channel.username == username))
+        if item and item.status == "active":
+            return f"ℹ️ @{escape(username)} allaqachon faol.\n\n{_channel_list_text()}"
+        if item:
+            item.status = "active"
+            item.added_by = chat_id
+        else:
+            db.add(Channel(username=username, status="active", added_by=chat_id))
+        db.commit()
+
+    from .worker import enqueue  # aylanma import: worker bizni import qiladi
+    try:
+        enqueue("add_channel", channel=username)
+    except Exception as exc:
+        log.exception("add_channel navbatga qo'yilmadi: %s", username)
+        return (
+            f"⚠️ @{escape(username)} qo'shildi, lekin tahlil boshlanmadi: {escape(str(exc))}\n"
+            "Keyingi soatlik yurishda o'zi olinadi."
+        )
+    return "\n".join([
+        f"✅ @{escape(username)} qo'shildi.",
+        "",
+        "Kanal hozir yig'ilyapti va tahlil qilinyapti — tugagach natija shu yerga keladi.",
+        "",
+        _channel_list_text(),
+    ])
+
+
+def block_channel(raw: str) -> str:
+    """Kanalni bloklaydi va barcha izini o'chiradi: postlar, turlar, rasmlar.
+
+    Yozuv "blocked" holatda saqlanadi, o'chirilmaydi — aks holda keyingi
+    deploy'da TELEGRAM_CHANNELS env'dan qayta kirib qolardi.
+    """
+    username = normalize_channel(raw)
+    if not USERNAME_RE.fullmatch(username):
+        return f"❌ <code>{escape(raw)}</code> — noto'g'ri username.\n\n{CHANNEL_USAGE}"
+
+    with SessionLocal() as db:
+        item = db.scalar(select(Channel).where(Channel.username == username))
+        if item is None:
+            db.add(Channel(username=username, status="blocked"))
+        else:
+            item.status = "blocked"
+        db.commit()
+
+    tours, posts, photos = purge_channel(username)
+    removed_files = 0
+    for photo in photos:
+        # photo_url: /media/telegram/<kanal>_<id>.jpg -> backend/media/telegram/...
+        target = MEDIA_DIR / photo.removeprefix("/media/").lstrip("/")
+        try:
+            target.unlink(missing_ok=True)
+            removed_files += 1
+        except OSError as exc:
+            log.warning("rasm o'chirilmadi %s: %s", target, exc)
+
+    cache_delete_pattern("tours:*")
+    cache_delete_pattern("filters:*")
+    return "\n".join([
+        f"🚫 @{escape(username)} bloklandi.",
+        f"O'chirildi: <b>{tours}</b> tur · <b>{posts}</b> post · <b>{removed_files}</b> rasm",
+        "",
+        "Qayta qo'shish uchun: <code>/add @" + escape(username) + "</code>",
+        "",
+        _channel_list_text(),
+    ])
+
+
+def notify_channel_added(channel: str, *, scraped: int, added: int, unavailable: str | None) -> None:
+    """/add tugagach adminga natija: kanal to'g'ri ishlaganini shu yerdan biladi."""
+    if unavailable:
+        text = f"⚠️ @{escape(channel)}: {scraped} ta post olindi, lekin tahlil to'xtadi — {escape(unavailable[:300])}"
+    else:
+        text = "\n".join([
+            f"📡 @{escape(channel)} tahlili tugadi",
+            f"Olindi: <b>{scraped}</b> ta post · katalogga qo'shildi: <b>{added}</b> ta tur",
+        ])
+        if scraped and not added:
+            text += "\n\nBirorta post talabga to'g'ri kelmadi (narx/sana/yo'nalish). Kanal e'lonlari formatini tekshiring."
+    for chat_id in _admin_chats():
+        try:
+            _reply(chat_id, text, with_button=False)
+        except Exception:
+            log.exception("add_channel hisoboti yuborilmadi: %s", chat_id)
+
+
 def _reply(chat_id: str, text: str, with_button: bool = True) -> None:
     payload = {
         "chat_id": chat_id, "text": text,
@@ -415,6 +545,22 @@ def handle_bot_update(update: dict) -> None:
             return
         for part in channel_report_messages():
             _reply(chat_id, part, with_button=False)
+        return
+
+    if command in {"/add", "/block"}:
+        if chat_id not in _admin_chats():
+            _reply(chat_id, UNKNOWN_TEXT)
+            return
+        argument = text.split(maxsplit=1)[1].strip() if len(text.split(maxsplit=1)) > 1 else ""
+        if not argument:
+            _reply(chat_id, CHANNEL_USAGE + "\n\n" + _channel_list_text(), with_button=False)
+            return
+        try:
+            reply = add_channel(argument, chat_id) if command == "/add" else block_channel(argument)
+        except Exception as exc:
+            log.exception("%s xatosi: %s", command, argument)
+            reply = f"❌ Xato: {escape(str(exc)[:300])}"
+        _reply(chat_id, reply, with_button=False)
         return
 
     _reply(chat_id, UNKNOWN_TEXT)

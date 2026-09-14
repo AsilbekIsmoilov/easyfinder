@@ -67,6 +67,21 @@ cp .env.mysql.example .env.mysql
 | `ADMIN_CHAT_ID` | Limit ogohlantirishi va update hisoboti shu chatga ketadi |
 | `DATABASE_URL` | Paroli `.env.mysql` dagi `MYSQL_PASSWORD` bilan bir xil bo'lishi shart |
 | `SCRAPE_LIMIT` | Har kanaldan bir yurishda nechta xabar o'qilsin (50–100 tavsiya etiladi) |
+| `TELEGRAM_CHANNELS` | **Faqat birinchi ishga tushirishda** o'qiladi — `channels` jadvali bo'sh bo'lsa shu ro'yxat unga ko'chiriladi. Keyin kanallar botdan boshqariladi (quyida) |
+
+### Kanallarni boshqarish (admin buyruqlari)
+
+Deploy'dan keyin kanallar ro'yxati bazada turadi, `.env` ni o'zgartirish
+ta'sir qilmaydi. `ADMIN_CHAT_ID` dan botga:
+
+| Buyruq | Nima qiladi |
+|---|---|
+| `/add @kanal` | Kanalni qo'shadi va **darhol** yig'ib tahlil qiladi (soatlik jadvalni kutmaydi). Tugagach natija adminga keladi |
+| `/block @kanal` | Bloklaydi va kanalning **barcha** postlari, turlari, like/izohlari va rasmlarini o'chiradi. Yozuv `blocked` holatda qoladi — qayta qo'shish `/add` bilan |
+| `/add` yoki `/block` (argumentsiz) | Faol va bloklangan kanallar ro'yxati |
+
+`/add` faqat kanalni bazaga yozadi; yig'ish worker'da bo'ladi. Worker
+o'chirilgan bo'lsa kanal qo'shiladi, lekin tahlil keyingi soatlik yurishda.
 
 `.env.mysql` ichida `MYSQL_PASSWORD` va `MYSQL_ROOT_PASSWORD` — kuchli parollar.
 Parolda `@ : / #` belgilari bo'lmasin, aks holda `DATABASE_URL` buziladi.

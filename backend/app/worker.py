@@ -8,7 +8,9 @@ import time
 
 from redis import Redis
 
-from .notifications import notify_limit_reached, notify_pipeline, notify_updated_tours
+from .notifications import (
+    notify_channel_added, notify_limit_reached, notify_pipeline, notify_updated_tours,
+)
 from .pipeline import process_pending
 from .scraper.telegram import refresh, scrape
 from .services import redis_client
@@ -20,6 +22,7 @@ QUEUE = "tour_finder:jobs"
 JOBS = {
     "create",              # yangi postlarni yig'ib tahlil qiladi
     "update",              # tahrirlangan postlarni topib qayta tahlil qiladi
+    "add_channel",         # /add: bitta yangi kanalni darhol yig'ib tahlil qiladi
     # eski nomlar — qo'lda ishga tushirish uchun saqlanadi
     "scrape",
     "pipeline",
@@ -27,14 +30,26 @@ JOBS = {
 }
 
 
-def enqueue(job: str) -> str:
+def enqueue(job: str, **params) -> str:
     client = redis_client()
     if not client:
         raise RuntimeError("Redis mavjud emas")
     if job not in JOBS:
         raise ValueError(f"Noma'lum job: {job}")
-    client.rpush(QUEUE, json.dumps({"job": job}))
+    client.rpush(QUEUE, json.dumps({"job": job, **params}))
     return job
+
+
+def run_add_channel(channel: str) -> None:
+    """/add dan keyin: faqat shu kanalni yig'ib, navbatdagi postlarni tahlil qiladi.
+
+    Soatlik jadvalni kutmaslik uchun. Natija adminga alohida xabar bo'lib
+    boradi — u kanal to'g'ri qo'shilganini shu yerdan biladi.
+    """
+    scraped = asyncio.run(scrape(only=channel))
+    result = process_pending(limit=None)
+    log.info("add_channel %s: %d post, %d tur", channel, scraped, result.added)
+    notify_channel_added(channel, scraped=scraped, added=result.added, unavailable=result.unavailable)
 
 
 def run_create() -> None:
@@ -99,12 +114,15 @@ def run_worker() -> None:
             time.sleep(5)
             continue
 
-        job = json.loads(payload)["job"]
+        message = json.loads(payload)
+        job = message["job"]
         try:
             if job == "create":
                 run_create()
             elif job == "update":
                 run_update()
+            elif job == "add_channel":
+                run_add_channel(message["channel"])
             elif job in {"scrape", "scrape_and_pipeline"}:
                 scraped = asyncio.run(scrape())
                 if job == "scrape_and_pipeline":

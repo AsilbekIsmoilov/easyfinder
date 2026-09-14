@@ -240,6 +240,76 @@ class NotificationSubscriber(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
+class Channel(Base):
+    """Manba kanallar. Bot buyruqlari (/add, /block) bilan boshqariladi.
+
+    Ro'yxat ilgari faqat TELEGRAM_CHANNELS env'da turardi. U jadval bo'sh
+    bo'lganda bir marta shu yerga ko'chiriladi, shundan keyin baza asosiy
+    manba: env'ga qo'shilgan kanal e'tiborga olinmaydi, /add ishlatiladi.
+    Bloklangan kanal o'chirilmaydi, "blocked" holatda qoladi — aks holda
+    keyingi deploy'da env'dan qayta kirib qolardi.
+    """
+
+    __tablename__ = "channels"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, index=True)   # @ siz, kichik harf
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)  # active | blocked
+    added_by: Mapped[str | None] = mapped_column(String(32), nullable=True)       # admin chat_id
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+def normalize_channel(value: str) -> str:
+    """'@Kanal', 'https://t.me/Kanal', 't.me/Kanal' -> 'kanal'."""
+    value = (value or "").strip()
+    for prefix in ("https://t.me/", "http://t.me/", "t.me/", "@"):
+        if value.lower().startswith(prefix):
+            value = value[len(prefix):]
+    return value.strip("/").lower()
+
+
+def active_channels() -> list[str]:
+    """Scraper o'qiydigan kanallar — faqat 'active' holatdagilar."""
+    with SessionLocal() as db:
+        return db.scalars(
+            select(Channel.username).where(Channel.status == "active").order_by(Channel.id)
+        ).all()
+
+
+def _seed_channels_from_env() -> None:
+    """TELEGRAM_CHANNELS ni jadval bo'sh bo'lganda bir marta ko'chiradi."""
+    with SessionLocal() as db:
+        if (db.scalar(select(func.count()).select_from(Channel)) or 0) > 0:
+            return
+        for username in dict.fromkeys(normalize_channel(c) for c in settings.channels):
+            if username:
+                db.add(Channel(username=username, status="active"))
+        db.commit()
+
+
+def purge_channel(username: str) -> tuple[int, int, list[str]]:
+    """Kanalning barcha postlari va turlarini o'chiradi.
+
+    Qaytaradi: (o'chirilgan turlar, o'chirilgan postlar, rasm yo'llari).
+    Rasm fayllarini o'chirish chaqiruvchining ishi — bu funksiya faqat baza.
+    """
+    with SessionLocal() as db:
+        tour_ids = db.scalars(select(Tour.id).where(Tour.channel == username)).all()
+        photos = [p for p in db.scalars(
+            select(RawPost.photo_url).where(RawPost.channel == username, RawPost.photo_url.is_not(None))
+        ).all()]
+        if tour_ids:
+            db.execute(delete(TourView).where(TourView.tour_id.in_(tour_ids)))
+            db.execute(delete(TourLike).where(TourLike.tour_id.in_(tour_ids)))
+            db.execute(delete(TourComment).where(TourComment.tour_id.in_(tour_ids)))
+            db.execute(delete(TourFeedback).where(TourFeedback.tour_id.in_(tour_ids)))
+            db.execute(delete(Tour).where(Tour.id.in_(tour_ids)))
+        posts = db.execute(delete(RawPost).where(RawPost.channel == username)).rowcount
+        db.commit()
+    return len(tour_ids), posts, photos
+
+
 def _backfill_existing_users() -> None:
     """Oldingi interactionlardan user va notification subscriberlarni bir marta tiklaydi."""
     with SessionLocal() as db:
@@ -273,6 +343,7 @@ def _backfill_existing_users() -> None:
 def init_db() -> None:
     Base.metadata.create_all(engine)
     _backfill_existing_users()
+    _seed_channels_from_env()
     raw_columns = {column["name"] for column in inspect(engine).get_columns("raw_posts")}
     retry_columns = {
         "processing_status": "VARCHAR(24) NOT NULL DEFAULT 'pending'",

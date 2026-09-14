@@ -23,7 +23,7 @@ from telethon import TelegramClient
 from telethon.sessions import StringSession
 
 from ..config import settings
-from ..db import RawPost, SessionLocal, Tour, init_db
+from ..db import RawPost, SessionLocal, Tour, active_channels, init_db
 
 log = logging.getLogger(__name__)
 MEDIA_DIR = Path(__file__).resolve().parents[2] / "media" / "telegram"
@@ -96,16 +96,20 @@ def _worth_storing(text: str) -> bool:
     return bool(text) and len(text) >= 30 and bool(DATE_HINT.search(text))
 
 
-async def scrape(full: bool = False) -> int:
+async def scrape(full: bool = False, only: str | None = None) -> int:
     """Kanallardan postlarni yig'adi.
 
     full=True bo'lsa incremental min_id chegarasi qo'llanmaydi va butun tarix
     (SCRAPE_HISTORY_DAYS ichida) qayta ko'rib chiqiladi — bir marta to'liq
     backfill qilish uchun. Kundalik ishda full=False yetarli.
+
+    only=<kanal> bo'lsa faqat o'sha kanal yig'iladi — /add buyrug'i yangi
+    kanalni darhol, boshqalarini kutmasdan tahlilga qo'yish uchun.
     """
     init_db()
-    if not settings.channels:
-        log.warning("TELEGRAM_CHANNELS bo'sh")
+    channels = [only] if only else active_channels()
+    if not channels:
+        log.warning("faol kanal yo'q — /add bilan qo'shing")
         return 0
 
     saved = 0
@@ -114,7 +118,7 @@ async def scrape(full: bool = False) -> int:
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     async with _make_client() as client:
         with SessionLocal() as db:
-            for channel in settings.channels:
+            for channel in channels:
                 channel_started = time.perf_counter()
                 min_id = 0 if full else await _last_seen_id(db, channel)
                 # To'liq backfillda eski postlar qayta uchraydi — unique
@@ -215,7 +219,8 @@ async def refresh(limit: int | None = None) -> list[int]:
     Qaytaradi: matni o'zgargan va qayta tahlilga qo'yilgan raw_post id lari.
     """
     init_db()
-    if not settings.channels:
+    channels = active_channels()
+    if not channels:
         return []
 
     window = limit or settings.scrape_limit or 50
@@ -225,7 +230,7 @@ async def refresh(limit: int | None = None) -> list[int]:
 
     async with _make_client() as client:
         with SessionLocal() as db:
-            for channel in settings.channels:
+            for channel in channels:
                 stored = {
                     row.source_id: row
                     for row in db.scalars(
