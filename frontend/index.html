@@ -1189,8 +1189,10 @@ function openOnboarding() {
   document.getElementById("onboardingBackdrop").classList.add("open");
   document.body.style.overflow="hidden";
 }
-// Sarlavhadagi "👥 N" — bot foydalanuvchilari soni. Yuklanmasa yoki 0 bo'lsa
-// belgi ko'rinmaydi: bo'sh raqam ishonch uyg'otmaydi.
+// Sarlavhadagi "👥 N" — bot foydalanuvchilari soni, FAQAT ADMIN ko'radi.
+// Backend adminni Telegram imzosi bo'yicha aniqlaydi va boshqa hammaga 404
+// qaytaradi, shuning uchun bu yerda alohida tekshiruv yo'q: 200 kelmasa
+// belgi shunchaki ko'rinmaydi.
 async function loadUserCount() {
   const el = document.getElementById("userCount");
   if (!el) return;

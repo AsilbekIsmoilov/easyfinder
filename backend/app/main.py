@@ -18,10 +18,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.mysql import insert as mysql_insert, match as mysql_match
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from .auth import current_user, require_telegram_user
+from .auth import AppUser, current_user, require_telegram_user
 from .analytics import analytics_summary, record_activity, total_users, touch_user
 from .inline import handle_inline_query
-from .notifications import handle_bot_update, subscribe, webhook_secret
+from .notifications import _admin_chats, handle_bot_update, subscribe, webhook_secret
 from .db import (
     RawPost, SessionLocal, Tour, TourComment, TourFeedback, TourLike, TourView, UserActivity, UserPreference,
     cleanup_expired_tours, cutoff_date, init_db, strict_tour_conditions,
@@ -237,9 +237,17 @@ USER_COUNT_TTL = 300
 
 
 @app.get("/api/stats/users")
-def public_user_count() -> dict:
-    """Ilova sarlavhasidagi foydalanuvchilar soni. Ochiq, chunki faqat bitta
-    umumiy raqam; 5 daqiqa keshlanadi — har ochilishda sanash shart emas."""
+def admin_user_count(user: AppUser = Depends(require_telegram_user)) -> dict:
+    """Ilova sarlavhasidagi foydalanuvchilar soni — faqat ADMIN_CHAT_ID uchun.
+
+    Erta bosqichda kichik son ("👥 7") oddiy foydalanuvchiga ishonchsizlik
+    beradi, adminga esa o'sishni kuzatish uchun kerak. Imzolangan Telegram
+    initData talab qilinadi — kimligini soxtalashtirib bo'lmaydi. Boshqa
+    hammaga 404: endpoint borligi ham bilinmasin, /all_users bilan bir xil.
+    Sonning o'zi 5 daqiqa keshlanadi.
+    """
+    if user.key.removeprefix("tg:") not in _admin_chats():
+        raise HTTPException(status_code=404, detail="Not found")
     cached = cache_get("stats:users")
     if cached is not None:
         return cached
