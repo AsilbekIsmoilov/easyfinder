@@ -485,6 +485,9 @@
   .comment-send:disabled { opacity:.55; cursor:wait; }
   .brand-actions { display:flex; align-items:center; gap:8px; }
   .lang-switch { display:flex; padding:3px; border:1px solid var(--ui-border); border-radius:12px; background:var(--ui-subtle); }
+  /* Til tugmasi bilan bir xil balandlik va shakl — bitta guruh bo'lib ko'rinsin. */
+  .user-count { display:inline-flex; align-items:center; gap:4px; height:34px; padding:0 10px; border:1px solid var(--ui-border); border-radius:12px; background:var(--ui-subtle); color:var(--ui-text-soft); font-size:11px; font-weight:800; white-space:nowrap; }
+  .user-count b { color:var(--ui-text); font-weight:800; }
   .lang-btn { min-width:36px; height:28px; padding:0 8px; border:0; border-radius:9px; color:var(--ui-text-soft); background:transparent; font:inherit; font-size:11px; font-weight:800; cursor:pointer; }
   .lang-btn.active { color:var(--ui-accent-text); background:var(--ui-accent); box-shadow:var(--ui-shadow-button); }
   .range-form { display:grid; gap:14px; padding:10px 0 4px; }
@@ -782,7 +785,7 @@
   <header class="hero">
     <div class="brand-row">
       <div class="brand"><img class="brand-mark" src="/assets/easyfinder-logo.png" alt="EasyFinder(Beta)"><span>EasyFinder(Beta)</span></div>
-      <div class="brand-actions"><div class="lang-switch" aria-label="Til"><button class="lang-btn" data-lang="uz">UZ</button><button class="lang-btn" data-lang="ru">RU</button></div></div>
+      <div class="brand-actions"><span class="user-count" id="userCount" hidden>👥 <b>0</b></span><div class="lang-switch" aria-label="Til"><button class="lang-btn" data-lang="uz">UZ</button><button class="lang-btn" data-lang="ru">RU</button></div></div>
     </div>
     <h1>Eng yaxshi turlarni bir joyda toping</h1>
     <p>Telegram, Instagram va saytlardagi tur e'lonlari bir joyda. Solishtiring, filtrlang va bevosita tur operatori bilan bog'laning.</p>
@@ -937,7 +940,8 @@ Object.assign(i18n.ru, { termsLink:"Условия использования", 
 Object.assign(i18n.uz, { forYou:"Siz uchun", onboardingKicker:"Shaxsiy tanlov", onboardingTitle:"Sizga mos turni topamiz", onboardingIntro:"Uchta qisqa javob — va bosh sahifa sizning didingizga moslashadi.", destinationQuestion:"Qayerga borishni xohlaysiz?", destinationPlaceholder:"Masalan, Turkiya", budgetQuestion:"Budjetingiz qancha?", budgetHint:"Bir kishi uchun maksimal budjetni kiriting.", dateQuestion:"Taxminiy sana qaysi?", dateHint:"Shu sanaga eng yaqin turlar yuqoriroqda chiqadi.", back:"Orqaga", next:"Keyingi", showTours:"Turlarni ko‘rsatish", saving:"Saqlanmoqda...", onboardingError:"Javoblarni saqlab bo‘lmadi. Qayta urinib ko‘ring." });
 Object.assign(i18n.ru, { forYou:"Для вас", onboardingKicker:"Персональный подбор", onboardingTitle:"Найдём тур для вас", onboardingIntro:"Три коротких ответа — и главная страница подстроится под ваши интересы.", destinationQuestion:"Куда вы хотите поехать?", destinationPlaceholder:"Например, Турция", budgetQuestion:"Какой у вас бюджет?", budgetHint:"Укажите максимальный бюджет на одного человека.", dateQuestion:"Когда планируете поездку?", dateHint:"Туры с ближайшими датами будут показаны выше.", back:"Назад", next:"Далее", showTours:"Показать туры", saving:"Сохраняем...", onboardingError:"Не удалось сохранить ответы. Попробуйте ещё раз." });Object.assign(i18n.uz, { matchTool:"Mos tur", editMatch:"Tanlovim" });
 Object.assign(i18n.ru, { matchTool:"Подобрать", editMatch:"Мой выбор" });
-Object.assign(i18n.uz, { clearPreference:"Shaxsiy filtrni o‘chirish" });
+Object.assign(i18n.uz, { clearPreference:"Shaxsiy filtrni o‘chirish", usersCount:"Bot foydalanuvchilari" });
+Object.assign(i18n.ru, { usersCount:"Пользователей бота" });
 Object.assign(i18n.uz, { allFilters:"Barcha filterlar", filterHint:"Bir yoki bir nechta qiymatni tanlang.", countryPlural:"Davlatlar", sourcePlural:"Manbalar", channelPlural:"Kanallar", selectedFilters:"ta filter tanlangan" });
 Object.assign(i18n.ru, { allFilters:"Все фильтры", filterHint:"Выберите одно или несколько значений.", countryPlural:"Страны", sourcePlural:"Источники", channelPlural:"Каналы", selectedFilters:"Выбрано" });
 Object.assign(i18n.ru, { clearPreference:"Удалить персональный фильтр" });Object.assign(i18n.uz, { hotOffers:"Issiq takliflar", hotCheap:"Arzon takliflar", hotSoon:"Yaqinda uchadigan turlar", hotFamily:"Oilaviy turlar", hotEmpty:"Bu bo‘limda hozircha tur yo‘q" });
@@ -1185,7 +1189,23 @@ function openOnboarding() {
   document.getElementById("onboardingBackdrop").classList.add("open");
   document.body.style.overflow="hidden";
 }
-async function initializePersonalization() { applyLanguage(); load(); }
+// Sarlavhadagi "👥 N" — bot foydalanuvchilari soni. Yuklanmasa yoki 0 bo'lsa
+// belgi ko'rinmaydi: bo'sh raqam ishonch uyg'otmaydi.
+async function loadUserCount() {
+  const el = document.getElementById("userCount");
+  if (!el) return;
+  try {
+    const response = await apiFetch("/api/stats/users");
+    if (!response.ok) return;
+    const data = await response.json();
+    const count = Number(data.users) || 0;
+    if (count < 1) return;
+    el.querySelector("b").textContent = count.toLocaleString("ru-RU");
+    el.title = tr("usersCount");
+    el.hidden = false;
+  } catch (error) { /* raqamsiz ham ilova ishlayveradi */ }
+}
+async function initializePersonalization() { applyLanguage(); load(); loadUserCount(); }
 function closeOnboarding() { document.getElementById("onboardingBackdrop").classList.remove("open"); document.body.style.overflow=""; }
 async function load(reset) {
   if (reset !== false) {
@@ -1340,6 +1360,7 @@ function applyLanguage() {
   document.documentElement.lang = state.lang;
   localStorage.setItem("tourLang", state.lang);
   document.querySelectorAll("[data-lang]").forEach(function(btn) { btn.classList.toggle("active", btn.dataset.lang === state.lang); });
+  const userCount = document.getElementById("userCount"); if (userCount) userCount.title = tr("usersCount");
   const fresh = document.querySelector("[data-i18n=fresh]"); if (fresh) fresh.textContent = tr("fresh");
   document.querySelector(".hero h1").textContent = tr("hero");
   document.querySelector(".hero > p").textContent = tr("intro");

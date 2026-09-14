@@ -8,7 +8,7 @@ from sqlalchemy import case, func, select
 
 from .auth import AppUser
 from .config import settings
-from .db import AppUserRecord, SessionLocal, Tour, TourView, UserActivity, utcnow
+from .db import AppUserRecord, NotificationSubscriber, SessionLocal, Tour, TourView, UserActivity, utcnow
 
 
 def touch_user(user: AppUser) -> None:
@@ -43,6 +43,21 @@ def _period_boundaries() -> tuple[datetime, datetime, datetime]:
     midnight_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
     today = midnight_local.astimezone(timezone.utc).replace(tzinfo=None)
     return today, today - timedelta(days=6), today - timedelta(days=29)
+
+
+def total_users() -> int:
+    """Botning jami foydalanuvchilari — ilovani ochganlar va /start bosganlar birga.
+
+    Bitta odam ikkala jadvalda ham bo'lishi mumkin, shuning uchun Telegram ID
+    bo'yicha birlashtiriladi (notifications._all_users bilan bir xil qoida).
+    Aks holda son ikki barobar ko'rinadi.
+    """
+    with SessionLocal() as db:
+        app_rows = db.execute(select(AppUserRecord.telegram_id, AppUserRecord.user_key)).all()
+        chat_ids = db.scalars(select(NotificationSubscriber.chat_id)).all()
+    people = {telegram_id or user_key for telegram_id, user_key in app_rows}
+    people.update(chat_ids)
+    return len(people)
 
 
 def analytics_summary() -> dict:

@@ -19,7 +19,7 @@ from sqlalchemy.dialects.mysql import insert as mysql_insert, match as mysql_mat
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from .auth import current_user, require_telegram_user
-from .analytics import analytics_summary, record_activity, touch_user
+from .analytics import analytics_summary, record_activity, total_users, touch_user
 from .inline import handle_inline_query
 from .notifications import handle_bot_update, subscribe, webhook_secret
 from .db import (
@@ -231,6 +231,21 @@ def _require_admin(admin_key: str | None = Depends(admin_key_header)) -> str:
 @app.get("/api/admin/analytics", dependencies=[Depends(_require_admin)])
 def admin_analytics() -> dict:
     return analytics_summary()
+
+
+USER_COUNT_TTL = 300
+
+
+@app.get("/api/stats/users")
+def public_user_count() -> dict:
+    """Ilova sarlavhasidagi foydalanuvchilar soni. Ochiq, chunki faqat bitta
+    umumiy raqam; 5 daqiqa keshlanadi — har ochilishda sanash shart emas."""
+    cached = cache_get("stats:users")
+    if cached is not None:
+        return cached
+    data = {"users": total_users()}
+    cache_set("stats:users", data, USER_COUNT_TTL)
+    return data
 
 @app.get("/api/tours")
 def list_tours(
