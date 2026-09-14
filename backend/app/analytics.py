@@ -21,12 +21,38 @@ def touch_user(user: AppUser) -> None:
             item.username = user.username
             item.photo_url = user.photo_url
             item.last_seen_at = now
+            # Manba faqat birinchi marta yoziladi. Odam keyin boshqa reklama
+            # havolasidan kirsa ham, uni olib kelgan birinchi manba qoladi.
+            if user.source and not item.acquisition_source:
+                item.acquisition_source = user.source
         else:
             db.add(AppUserRecord(
                 user_key=user.key, telegram_id=telegram_id,
                 display_name=user.display_name, username=user.username,
-                photo_url=user.photo_url, first_seen_at=now, last_seen_at=now,
+                photo_url=user.photo_url, acquisition_source=user.source,
+                first_seen_at=now, last_seen_at=now,
             ))
+        db.commit()
+
+
+def set_acquisition_source(telegram_id: str, source: str, display_name: str, username: str | None) -> None:
+    """`/start src_<nom>` yo'li: odam ilovani hali ochmagan, faqat botga yozgan.
+
+    Yozuv bo'lmasa yaratiladi — keyin u menyu tugmasidan ilovani ochganda
+    start_param bo'sh keladi va manba yo'qolgan bo'lardi. Bor bo'lsa faqat
+    bo'sh manba to'ldiriladi.
+    """
+    now = utcnow()
+    key = f"tg:{telegram_id}"
+    with SessionLocal() as db:
+        item = db.scalar(select(AppUserRecord).where(AppUserRecord.user_key == key))
+        if item is None:
+            db.add(AppUserRecord(
+                user_key=key, telegram_id=telegram_id, display_name=display_name,
+                username=username, acquisition_source=source, first_seen_at=now, last_seen_at=now,
+            ))
+        elif not item.acquisition_source:
+            item.acquisition_source = source
         db.commit()
 
 
@@ -35,6 +61,34 @@ def record_activity(user: AppUser, event_type: str, **values) -> None:
     with SessionLocal() as db:
         db.add(UserActivity(user_key=user.key, event_type=event_type, **values))
         db.commit()
+
+
+def sources_summary(days: int = 7) -> dict:
+    """Manbalar bo'yicha: jami foydalanuvchi va oxirgi N kunda kelganlar.
+
+    Faqat Telegram orqali kelganlar (anonimlar kirmaydi). Manbasiz kelganlar
+    "to'g'ridan-to'g'ri" qatorida — bot qidiruvidan, ulashilgan turdan yoki
+    menyu tugmasidan kirganlar.
+    """
+    since = utcnow() - timedelta(days=days)
+    with SessionLocal() as db:
+        total = db.execute(
+            select(AppUserRecord.acquisition_source, func.count())
+            .where(AppUserRecord.telegram_id.is_not(None))
+            .group_by(AppUserRecord.acquisition_source)
+        ).all()
+        recent = db.execute(
+            select(AppUserRecord.acquisition_source, func.count())
+            .where(AppUserRecord.telegram_id.is_not(None), AppUserRecord.first_seen_at >= since)
+            .group_by(AppUserRecord.acquisition_source)
+        ).all()
+    recent_map = dict(recent)
+    rows = [
+        {"source": source, "total": count, "recent": recent_map.get(source, 0)}
+        for source, count in total
+    ]
+    rows.sort(key=lambda row: (-row["total"], row["source"] or ""))
+    return {"days": days, "rows": rows}
 
 
 def _period_boundaries() -> tuple[datetime, datetime, datetime]:

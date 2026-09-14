@@ -12,6 +12,8 @@ import time
 
 from sqlalchemy import func, select
 
+from .analytics import set_acquisition_source, sources_summary
+from .auth import parse_source
 from .bot_setup import bot_api
 from .config import settings
 from .db import (  # noqa: F401  (Tour update hisobotida)
@@ -361,6 +363,31 @@ def channel_report_messages() -> list[str]:
     return messages
 
 
+def sources_message() -> str:
+    """/sources javobi: reklama manbalari bo'yicha foydalanuvchilar.
+
+    Havola formati: t.me/izyfinderbot?startapp=src_<nom>  (ilovani ochadi)
+                    t.me/izyfinderbot?start=src_<nom>     (botga /start)
+    """
+    data = sources_summary(days=7)
+    lines = [
+        "📈 <b>Manbalar bo'yicha foydalanuvchilar</b>",
+        f"<i>jami · oxirgi {data['days']} kunda</i>",
+        "",
+    ]
+    if not data["rows"]:
+        lines.append("Hozircha foydalanuvchi yo'q.")
+    for row in data["rows"]:
+        name = escape(row["source"]) if row["source"] else "to'g'ridan-to'g'ri"
+        lines.append(f"• {name} — <b>{row['total']}</b> · +{row['recent']}")
+    lines += [
+        "",
+        "Yangi manba uchun havola:",
+        "<code>https://t.me/izyfinderbot?startapp=src_NOM</code>",
+    ]
+    return "\n".join(lines)
+
+
 # ---- Kanallarni boshqarish: /add, /block ---------------------------------
 
 # Telegram username qoidasi: harf bilan boshlanadi, 5-32 belgi, harf/raqam/_.
@@ -516,6 +543,15 @@ def handle_bot_update(update: dict) -> None:
             filter(None, (sender.get("first_name"), sender.get("last_name")))
         ) or "User"
         subscribe(chat_id, display_name, sender.get("username"))
+        # "/start src_instagram" — t.me/bot?start=src_instagram havolasidan.
+        # Ilova hali ochilmagan, manba shu yerda yoziladi.
+        parts = text.split(maxsplit=1)
+        source = parse_source(parts[1]) if len(parts) > 1 else None
+        if source:
+            try:
+                set_acquisition_source(chat_id, source, display_name, sender.get("username"))
+            except Exception:
+                log.exception("manba yozilmadi: %s %s", chat_id, source)
         send_statistics(chat_id, reason="start")
         return
 
@@ -545,6 +581,13 @@ def handle_bot_update(update: dict) -> None:
             return
         for part in channel_report_messages():
             _reply(chat_id, part, with_button=False)
+        return
+
+    if command == "/sources":
+        if chat_id not in _admin_chats():
+            _reply(chat_id, UNKNOWN_TEXT)
+            return
+        _reply(chat_id, sources_message(), with_button=False)
         return
 
     if command in {"/add", "/block"}:

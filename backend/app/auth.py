@@ -20,6 +20,23 @@ class AppUser:
     username: str | None = None
     photo_url: str | None = None
     profile_url: str | None = None
+    # Qayerdan kelgani: t.me/bot?startapp=src_<nom> dagi <nom>. Bu qiymat
+    # imzolangan initData ichida keladi, shuning uchun soxtalashtirib bo'lmaydi.
+    source: str | None = None
+
+
+# Reklama/manba belgisi: startapp=src_instagram, startapp=src_kanal1 ...
+# `tour_123` kabi boshqa startapp qiymatlari (inline deep link) manba emas.
+SOURCE_PREFIX = "src_"
+SOURCE_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
+
+
+def parse_source(start_param: str | None) -> str | None:
+    value = (start_param or "").strip().lower()
+    if not value.startswith(SOURCE_PREFIX):
+        return None
+    value = value[len(SOURCE_PREFIX):]
+    return value if SOURCE_RE.fullmatch(value) else None
 
 
 def current_user(request: Request) -> AppUser:
@@ -83,4 +100,5 @@ def _telegram_user(init_data: str) -> AppUser:
     return AppUser(
         key=f"tg:{user_id}", display_name=name[:128], username=username or None,
         photo_url=photo_url, profile_url=profile_url,
+        source=parse_source(fields.get("start_param")),
     )

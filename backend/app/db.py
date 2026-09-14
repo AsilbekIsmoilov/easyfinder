@@ -195,6 +195,9 @@ class AppUserRecord(Base):
     display_name: Mapped[str] = mapped_column(String(128), default="User")
     username: Mapped[str | None] = mapped_column(String(64), nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    # Birinchi kelgan manbasi (startapp=src_<nom>). Bir marta yoziladi, keyin
+    # o'zgarmaydi — reklama samarasini o'lchash uchun "birinchi teginish" kerak.
+    acquisition_source: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
@@ -371,6 +374,11 @@ def init_db() -> None:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE tours ADD COLUMN is_duplicate BOOLEAN NOT NULL DEFAULT 0"))
             connection.execute(text("CREATE INDEX ix_tours_is_duplicate ON tours (is_duplicate)"))
+    user_columns = {c["name"] for c in inspect(engine).get_columns("app_users")}
+    if "acquisition_source" not in user_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE app_users ADD COLUMN acquisition_source VARCHAR(32)"))
+            connection.execute(text("CREATE INDEX ix_app_users_acquisition_source ON app_users (acquisition_source)"))
 
     if not settings.database_url.startswith("sqlite"):
         if engine.dialect.name == "mysql":

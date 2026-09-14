@@ -140,7 +140,9 @@ class SearchActivityInput(BaseModel):
 @app.post("/api/session")
 def register_session(request: Request) -> dict:
     user = current_user(request)
-    record_activity(user, "app_open")
+    # Har ochilishda manba ham yoziladi — foydalanuvchidagi "birinchi manba"
+    # bilan birga bu "qaysi reklama qancha ochilish berdi" ni ham ko'rsatadi.
+    record_activity(user, "app_open", source=user.source)
     if user.key.startswith("tg:"):
         subscribe(user.key.removeprefix("tg:"), user.display_name, user.username)
     return {"registered": True, "notifications": user.key.startswith("tg:")}
