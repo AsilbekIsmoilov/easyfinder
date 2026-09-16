@@ -17,7 +17,11 @@ class Settings(BaseSettings):
     telegram_session: str = ""
     telegram_channels: str = ""
     telegram_bot_token: str = ""
-    scrape_limit: int = 200
+    # Har kanaldan bir yurishda o'qiladigan xabarlar soni. 200 ta ko'p edi:
+    # eski postlarning ketish sanasi baribir o'tgan bo'ladi, lekin har biri
+    # Claude'ga yuborilib pul ketardi. 60 ta yangi kanalni backfill qilish
+    # narxini uch baravar tushiradi va kundalik yig'ishga yetib ortadi.
+    scrape_limit: int = 60
     scrape_prefilter: bool = True
     scrape_history_days: int = 365
 

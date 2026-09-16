@@ -66,7 +66,7 @@ cp .env.mysql.example .env.mysql
 | `TELEGRAM_WEBAPP_URL` | Haqiqiy HTTPS domen |
 | `ADMIN_CHAT_ID` | Limit ogohlantirishi va update hisoboti shu chatga ketadi |
 | `DATABASE_URL` | Paroli `.env.mysql` dagi `MYSQL_PASSWORD` bilan bir xil bo'lishi shart |
-| `SCRAPE_LIMIT` | Har kanaldan bir yurishda nechta xabar o'qilsin (50–100 tavsiya etiladi) |
+| `SCRAPE_LIMIT` | Har kanaldan bir yurishda nechta xabar o'qilsin. Standart 60 — yangi kanal qo'shganda shuncha post Claude'ga ketadi |
 | `TELEGRAM_CHANNELS` | **Faqat birinchi ishga tushirishda** o'qiladi — `channels` jadvali bo'sh bo'lsa shu ro'yxat unga ko'chiriladi. Keyin kanallar botdan boshqariladi (quyida) |
 
 ### Kanallarni boshqarish (admin buyruqlari)
