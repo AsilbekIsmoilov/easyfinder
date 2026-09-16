@@ -899,6 +899,8 @@
 </div>
 <script>
 const tg = window.Telegram && window.Telegram.WebApp;
+// Zaxira qiymat: /api/session javobi kelguncha yoki u ishlamasa ishlatiladi.
+let botUsername = "izyfinderbot";
 let viewerId = localStorage.getItem("tourViewerId");
 if (!viewerId) {
   viewerId = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, "_");
@@ -1499,7 +1501,7 @@ list.addEventListener("click", async function(e) {
   }
   if (e.target.closest(".comment-btn")) { openComments(tourId); return; }
   if (e.target.closest(".share-btn")) {
-    const deepLink = "https://t.me/izyfinderbot?startapp=tour_" + tourId;
+    const deepLink = "https://t.me/" + botUsername + "?startapp=tour_" + tourId;
     const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(deepLink) + "&text=" + encodeURIComponent(tr("shareMessage"));
     if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl); else window.open(shareUrl, "_blank");
     return;
@@ -1618,7 +1620,12 @@ document.getElementById("preferenceClear").addEventListener("click", function() 
 document.querySelectorAll("[data-lang]").forEach(function(btn) {
   btn.addEventListener("click", function() { state.lang = btn.dataset.lang; applyLanguage(); load(); });
 });
-apiFetch("/api/session", { method:"POST" }).catch(function() {});
+// Bot username'i serverdan olinadi (tokendan getMe orqali) — ulashish
+// havolasida qotirib yozilmasin, bot almashtirilganda frontend tegilmasin.
+apiFetch("/api/session", { method:"POST" })
+  .then(function(r) { return r.ok ? r.json() : null; })
+  .then(function(d) { if (d && d.bot_username) botUsername = d.bot_username; })
+  .catch(function() {});
 const filtersReady = apiFetch("/api/filters").then(function(r) { return r.json(); }).then(function(data) { state.filters = data; renderDestinationChips(); }).catch(function() {});
 loadHotOffers();
 applyLanguage();

@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 
 from .analytics import set_acquisition_source, sources_summary
 from .auth import parse_source
-from .bot_setup import bot_api
+from .bot_setup import bot_api, bot_username
 from .config import settings
 from .db import (  # noqa: F401  (Tour update hisobotida)
     AppUserRecord, Channel, NotificationSubscriber, SessionLocal, Tour, TourComment, TourLike,
@@ -55,7 +55,9 @@ def subscribe(chat_id: str, display_name: str, username: str | None = None) -> N
 def _button() -> dict:
     if settings.telegram_webapp_url:
         return {"text": "✈️ Turlarni ko‘rish", "web_app": {"url": settings.telegram_webapp_url.rstrip("/")}}
-    return {"text": "✈️ Turlarni ko‘rish", "url": "https://t.me/izyfinderbot?startapp"}
+    username = bot_username()
+    target = f"https://t.me/{username}?startapp" if username else "https://t.me"
+    return {"text": "✈️ Turlarni ko‘rish", "url": target}
 
 
 def active_tour_statistics() -> dict:
@@ -366,8 +368,8 @@ def channel_report_messages() -> list[str]:
 def sources_message() -> str:
     """/sources javobi: reklama manbalari bo'yicha foydalanuvchilar.
 
-    Havola formati: t.me/izyfinderbot?startapp=src_<nom>  (ilovani ochadi)
-                    t.me/izyfinderbot?start=src_<nom>     (botga /start)
+    Havola formati: t.me/<bot>?startapp=src_<nom>  (ilovani ochadi)
+                    t.me/<bot>?start=src_<nom>     (botga /start)
     """
     data = sources_summary(days=7)
     lines = [
@@ -383,7 +385,7 @@ def sources_message() -> str:
     lines += [
         "",
         "Yangi manba uchun havola:",
-        "<code>https://t.me/izyfinderbot?startapp=src_NOM</code>",
+        f"<code>https://t.me/{bot_username() or 'BOT'}?startapp=src_NOM</code>",
     ]
     return "\n".join(lines)
 
@@ -535,7 +537,7 @@ def handle_bot_update(update: dict) -> None:
     if not chat_id or not text:
         return
 
-    # "/stop@izyfinderbot" ko'rinishi ham keladi
+    # "/stop@botname" ko'rinishi ham keladi
     command = text.split()[0].split("@")[0].lower()
 
     if command == "/start":

@@ -20,6 +20,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from .auth import AppUser, current_user, require_telegram_user
 from .analytics import analytics_summary, record_activity, total_users, touch_user
+from .bot_setup import bot_username
 from .inline import handle_inline_query
 from .notifications import _admin_chats, handle_bot_update, subscribe, webhook_secret
 from .db import (
@@ -145,7 +146,13 @@ def register_session(request: Request) -> dict:
     record_activity(user, "app_open", source=user.source)
     if user.key.startswith("tg:"):
         subscribe(user.key.removeprefix("tg:"), user.display_name, user.username)
-    return {"registered": True, "notifications": user.key.startswith("tg:")}
+    # Bot username'i frontendga shu yerdan beriladi — ulashish havolasida
+    # qotirib yozilmasin, bot almashtirilganda kod o'zgarmasin.
+    return {
+        "registered": True,
+        "notifications": user.key.startswith("tg:"),
+        "bot_username": bot_username(),
+    }
 
 
 @app.post("/api/telegram/webhook", include_in_schema=False)
@@ -154,7 +161,7 @@ def telegram_webhook(update: dict, request: Request) -> dict:
     if not supplied or not hmac.compare_digest(supplied, webhook_secret()):
         raise HTTPException(status_code=403, detail="Invalid Telegram webhook secret")
 
-    # Inline so'rov ("@izyfinderbot antalya") alohida ishlovchiga ketadi.
+    # Inline so'rov ("@botname antalya") alohida ishlovchiga ketadi.
     if "inline_query" in update:
         handle_inline_query(update["inline_query"])
         return {"ok": True}

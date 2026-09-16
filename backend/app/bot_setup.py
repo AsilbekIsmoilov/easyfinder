@@ -7,11 +7,14 @@ Ishlatish:
 from __future__ import annotations
 
 import argparse
+import logging
 import json
 import hashlib
 from urllib import request
 
 from .config import settings
+
+log = logging.getLogger(__name__)
 
 
 def bot_api(method: str, payload: dict | None = None) -> dict:
@@ -27,6 +30,26 @@ def bot_api(method: str, payload: dict | None = None) -> dict:
     if not result.get("ok"):
         raise RuntimeError(result.get("description", "Telegram Bot API xatosi"))
     return result["result"]
+
+
+_CACHED_USERNAME: str | None = None
+
+
+def bot_username() -> str:
+    """Botning @username'i — tokendan getMe orqali olinadi va keshlanadi.
+
+    Qotirib yozilmaydi: bot almashtirilganda faqat TELEGRAM_BOT_TOKEN
+    o'zgaradi, kod va havolalar o'zi to'g'rilanadi. Xato bo'lsa bo'sh satr
+    qaytadi — chaqiruvchi havolasiz ishlashga tayyor bo'lishi kerak.
+    """
+    global _CACHED_USERNAME
+    if _CACHED_USERNAME is None:
+        try:
+            _CACHED_USERNAME = bot_api("getMe")["username"]
+        except Exception:
+            log.exception("getMe ishlamadi — bot username aniqlanmadi")
+            return ""
+    return _CACHED_USERNAME
 
 
 def setup_menu(webapp_url: str) -> str:

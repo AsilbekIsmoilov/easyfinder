@@ -1,6 +1,6 @@
-"""Inline rejim: @izyfinderbot <so'rov> — turni istalgan chatda ulashish.
+"""Inline rejim: @<bot> <so'rov> — turni istalgan chatda ulashish.
 
-Foydalanuvchi oilaviy yoki do'stlar chatida `@izyfinderbot antalya` deb yozadi
+Foydalanuvchi oilaviy yoki do'stlar chatida `@<bot> antalya` deb yozadi
 va tur kartasini o'sha yerda ulashadi. Har ulashish bot nomi bilan ketadi,
 ya'ni bu tabiiy tarqalish kanali.
 
@@ -15,7 +15,7 @@ import logging
 
 from sqlalchemy import or_, select
 
-from .bot_setup import bot_api
+from .bot_setup import bot_api, bot_username
 from .config import settings
 from .db import SessionLocal, Tour, cutoff_date, strict_tour_conditions
 
@@ -24,20 +24,6 @@ log = logging.getLogger(__name__)
 MAX_RESULTS = 30
 CACHE_SECONDS = 60
 
-
-def _bot_username() -> str:
-    """Deep link uchun bot username'i. Bir marta olinib keshlanadi."""
-    global _CACHED_USERNAME
-    if _CACHED_USERNAME is None:
-        try:
-            _CACHED_USERNAME = bot_api("getMe")["username"]
-        except Exception:
-            log.exception("getMe ishlamadi, deep link tuzilmaydi")
-            _CACHED_USERNAME = ""
-    return _CACHED_USERNAME
-
-
-_CACHED_USERNAME: str | None = None
 
 
 def _public_url(path: str | None) -> str | None:
@@ -98,7 +84,7 @@ def _result(tour: Tour) -> dict:
         lines.append(f"\n🔗 <a href=\"{tour.url}\">Asl e'lonni ochish</a>")
     message_text = "\n".join(lines)
 
-    username = _bot_username()
+    username = bot_username()
     buttons = []
     if username:
         buttons.append([{
