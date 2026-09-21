@@ -274,6 +274,7 @@ def process_pending(limit: int | None = 200) -> PipelineResult:
 
     cache_delete_pattern("tours:*")
     cache_delete_pattern("filters:*")
+    cache_delete_pattern("channels:*")   # avatar/nom yangilangan bo'lishi mumkin
     log.info(
         "qayta ishlandi: %d post, %d tur (yangi %d, o'zgargan %d, olib tashlangan %d)",
         seen, created, added, len(changed), removed,

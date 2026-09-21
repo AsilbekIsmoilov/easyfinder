@@ -25,7 +25,7 @@ from .inline import handle_inline_query
 from .notifications import _admin_chats, handle_bot_update, subscribe, webhook_secret
 from .db import (
     RawPost, SessionLocal, Tour, TourComment, TourFeedback, TourLike, TourView, UserActivity, UserPreference,
-    cleanup_expired_tours, cutoff_date, init_db, strict_tour_conditions,
+    channel_meta, cleanup_expired_tours, cutoff_date, init_db, strict_tour_conditions,
 )
 from .telegram_comments import send_source_comment
 from .services import cache_get, cache_set, rate_allowed, redis_client
@@ -97,10 +97,26 @@ def _public_media_url(value: str | None) -> str | None:
         return settings.media_base_url.rstrip("/") + value
     return value
 
+CHANNEL_META_TTL = 300
+
+
+def _channel_meta_cached() -> dict[str, dict]:
+    """username -> {title, avatar_url}. Kanal soni o'nlab, yozuv kamdan-kam
+    o'zgaradi — har so'rovda bazaga bormasdan 5 daqiqa keshlanadi."""
+    cached = cache_get("channels:meta")
+    if cached is not None:
+        return cached
+    data = channel_meta()
+    cache_set("channels:meta", data, CHANNEL_META_TTL)
+    return data
+
+
 def _serialize(t: Tour, original_text: str | None = None, stats: dict | None = None, comment_available: bool = False) -> dict:
     # Qaytish sanasi, ovqatlanish va mehmonxona chiqarilmaydi — ular endi
     # ajratilmaydi va UI da ham ko'rsatilmaydi.
     details = t.details or {}
+    # Kartada tur rasmi o'rniga kanal avatari va nomi turadi.
+    meta = _channel_meta_cached().get((t.channel or "").lower(), {})
     return {
         "id": t.id,
         "title": t.title,
@@ -116,6 +132,8 @@ def _serialize(t: Tour, original_text: str | None = None, stats: dict | None = N
         "details": details,
         "source": t.source,
         "channel": t.channel,
+        "channel_title": meta.get("title") or None,
+        "channel_avatar": _public_media_url(meta.get("avatar_url")),
         "url": t.url,
         "photo_url": _public_media_url(t.photo_url),
         "posted_at": t.posted_at.isoformat() if t.posted_at else None,

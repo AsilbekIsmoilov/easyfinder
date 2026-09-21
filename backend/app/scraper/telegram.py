@@ -16,17 +16,19 @@ import logging
 import re
 import time
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
 from ..config import settings
-from ..db import RawPost, SessionLocal, Tour, active_channels, init_db
+from ..db import Channel, RawPost, SessionLocal, Tour, active_channels, init_db, save_channel_meta
 
 log = logging.getLogger(__name__)
 MEDIA_DIR = Path(__file__).resolve().parents[2] / "media" / "telegram"
+CHANNEL_MEDIA_DIR = MEDIA_DIR.parent / "channels"
+AVATAR_MAX_AGE = timedelta(days=7)   # avatar shundan eski bo'lsa qayta olinadi
 
 
 def _make_client() -> TelegramClient:
@@ -96,6 +98,43 @@ def _worth_storing(text: str) -> bool:
     return bool(text) and len(text) >= 30 and bool(DATE_HINT.search(text))
 
 
+async def _refresh_channel_meta(client: TelegramClient, db, channel: str, entity) -> None:
+    """Kanal nomi va avatarini bir marta oladi, haftada bir yangilaydi.
+
+    Kartada tur rasmi o'rniga kanal avatari turadi, shuning uchun bu ma'lumot
+    har kanal uchun bo'lishi kerak. Telegram'ga qo'shimcha so'rov faqat avatar
+    eskirganda ketadi — yig'ish tezligiga ta'sir qilmaydi.
+    """
+    row = db.scalar(select(Channel).where(Channel.username == channel))
+    if row is None:
+        return
+    fresh = (
+        row.avatar_updated_at is not None
+        and row.avatar_url
+        and (CHANNEL_MEDIA_DIR / Path(row.avatar_url).name).exists()
+        and utcnow_naive() - row.avatar_updated_at < AVATAR_MAX_AGE
+    )
+    if fresh:
+        return
+
+    title = getattr(entity, "title", None)
+    avatar_url = None
+    try:
+        CHANNEL_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+        target = CHANNEL_MEDIA_DIR / f"{channel}.jpg"
+        downloaded = await client.download_profile_photo(entity, file=str(target))
+        if downloaded:
+            avatar_url = f"/media/channels/{Path(downloaded).name}"
+    except Exception as exc:
+        log.warning("avatar yuklanmadi %s: %s", channel, exc)
+    save_channel_meta(channel, title, avatar_url)
+
+
+def utcnow_naive() -> datetime:
+    """Bazadagi DATETIME tz'siz qaytadi — solishtirish uchun shu ko'rinishda."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 async def scrape(full: bool = False, only: str | None = None) -> int:
     """Kanallardan postlarni yig'adi.
 
@@ -137,6 +176,7 @@ async def scrape(full: bool = False, only: str | None = None) -> int:
                 except Exception as exc:  # kanal topilmadi / ruxsat yo'q
                     log.warning("kanal ochilmadi %s: %s", channel, exc)
                     continue
+                await _refresh_channel_meta(client, db, channel, entity)
 
                 count = 0
                 channel_images = 0

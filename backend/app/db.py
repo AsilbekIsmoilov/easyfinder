@@ -259,6 +259,12 @@ class Channel(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)   # @ siz, kichik harf
     status: Mapped[str] = mapped_column(String(16), default="active", index=True)  # active | blocked
     added_by: Mapped[str | None] = mapped_column(String(32), nullable=True)       # admin chat_id
+    # Kartada ko'rsatiladi: kanal nomi va dumaloq avatar. Scraper yig'ish
+    # paytida bir marta oladi va haftada bir yangilaydi — har so'rovda
+    # Telegram'ga murojaat qilish shart emas.
+    title: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)     # /media/channels/<username>.jpg
+    avatar_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -278,6 +284,26 @@ def active_channels() -> list[str]:
         return db.scalars(
             select(Channel.username).where(Channel.status == "active").order_by(Channel.id)
         ).all()
+
+
+def channel_meta() -> dict[str, dict]:
+    """username -> {title, avatar_url}. Karta sarlavhasi uchun."""
+    with SessionLocal() as db:
+        rows = db.execute(select(Channel.username, Channel.title, Channel.avatar_url)).all()
+    return {u: {"title": t, "avatar_url": a} for u, t, a in rows}
+
+
+def save_channel_meta(username: str, title: str | None, avatar_url: str | None) -> None:
+    """Scraper kanalni ochganda nom va avatarni yozib qo'yadi."""
+    with SessionLocal() as db:
+        item = db.scalar(select(Channel).where(Channel.username == username))
+        if item is None:
+            return
+        item.title = (title or "")[:256] or None
+        if avatar_url is not None:
+            item.avatar_url = avatar_url
+        item.avatar_updated_at = utcnow()
+        db.commit()
 
 
 def _seed_channels_from_env() -> None:
@@ -379,6 +405,16 @@ def init_db() -> None:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE app_users ADD COLUMN acquisition_source VARCHAR(32)"))
             connection.execute(text("CREATE INDEX ix_app_users_acquisition_source ON app_users (acquisition_source)"))
+    channel_columns = {c["name"] for c in inspect(engine).get_columns("channels")}
+    channel_new = {
+        "title": "VARCHAR(256)",
+        "avatar_url": "VARCHAR(512)",
+        "avatar_updated_at": "DATETIME",
+    }
+    with engine.begin() as connection:
+        for name, definition in channel_new.items():
+            if name not in channel_columns:
+                connection.execute(text(f"ALTER TABLE channels ADD COLUMN {name} {definition}"))
 
     if not settings.database_url.startswith("sqlite"):
         if engine.dialect.name == "mysql":
