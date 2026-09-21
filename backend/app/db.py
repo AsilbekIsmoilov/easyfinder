@@ -406,6 +406,18 @@ def init_db() -> None:
             if name not in channel_columns:
                 connection.execute(text(f"ALTER TABLE channels ADD COLUMN {name} {definition}"))
 
+    # Kanalga izoh yozish olib tashlandi: raw_posts.comment_available ustuni va
+    # tour_comments jadvali endi kerak emas. Ilova ichidagi izohlar tour_feedback da.
+    if "comment_available" in {c["name"] for c in inspect(engine).get_columns("raw_posts")}:
+        try:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE raw_posts DROP COLUMN comment_available"))
+        except Exception as exc:
+            log.warning("raw_posts.comment_available tashlanmadi: %s", exc)
+    if "tour_comments" in inspect(engine).get_table_names():
+        with engine.begin() as connection:
+            connection.execute(text("DROP TABLE tour_comments"))
+
     if not settings.database_url.startswith("sqlite"):
         if engine.dialect.name == "mysql":
             index_names = {item["name"] for item in inspect(engine).get_indexes("tours")}
@@ -424,17 +436,6 @@ def init_db() -> None:
             connection.execute(text("ALTER TABLE tours ADD COLUMN details JSON"))
     for index in Tour.__table__.indexes:
         index.create(engine, checkfirst=True)
-    # Kanalga izoh yozish olib tashlandi: raw_posts.comment_available ustuni va
-    # tour_comments jadvali endi kerak emas. Ilova ichidagi izohlar tour_feedback da.
-    if "comment_available" in {c["name"] for c in inspect(engine).get_columns("raw_posts")}:
-        try:
-            with engine.begin() as connection:
-                connection.execute(text("ALTER TABLE raw_posts DROP COLUMN comment_available"))
-        except Exception as exc:
-            log.warning("raw_posts.comment_available tashlanmadi: %s", exc)
-    if "tour_comments" in inspect(engine).get_table_names():
-        with engine.begin() as connection:
-            connection.execute(text("DROP TABLE tour_comments"))
 
 
 def cleanup_expired_tours(today: str) -> int:

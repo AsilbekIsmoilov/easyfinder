@@ -344,7 +344,7 @@ def list_tours(
         rows = db.execute(stmt).all()
         total = db.scalar(count_stmt) or 0
 
-    stats = _interaction_stats([tour.id for tour, _, _ in rows])
+    stats = _interaction_stats([tour.id for tour, _ in rows])
     data = {
         "items": [_serialize(tour, raw, stats.get(tour.id)) for tour, raw in rows],
         "count": total,
@@ -516,18 +516,20 @@ def recommendations(
             reasons.append("history")
         if tour.id in viewed_ids:
             score -= 3
+        # Tartib: 0 ball, 1 sana, 2 tur, 3 asl matn, 4 sabablar, 5 yo'nalish mos,
+        # 6 byudjet mos, 7 sana farqi. Pastdagi row[N] lar shu tartibga bog'liq.
         ranked.append((score, tour.posted_at or tour.created_at, tour, original, reasons,
                        destination_match, budget_match, date_distance))
 
     # Uchta javob ketma-ket amaliy filter bo'ladi. Bir bosqich nol natija bersa,
     # oldingi muvaffaqiyatli bosqich saqlanadi va foydalanuvchi bo'sh ekran ko'rmaydi.
-    destination_rows = [row for row in ranked if row[6]]
+    destination_rows = [row for row in ranked if row[5]]
     if destination_rows:
         ranked = destination_rows
-    budget_rows = [row for row in ranked if row[7]]
+    budget_rows = [row for row in ranked if row[6]]
     if budget_rows:
         ranked = budget_rows
-    date_rows = [row for row in ranked if row[8] <= 45]
+    date_rows = [row for row in ranked if row[7] <= 45]
     if date_rows:
         ranked = date_rows
     ranked.sort(key=lambda row: (row[0], row[1]), reverse=True)
