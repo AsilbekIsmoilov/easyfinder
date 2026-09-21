@@ -983,6 +983,18 @@ function locationParts(value) {
 function locationName(value) {
   return locationParts(value).join(" · ");
 }
+function sourceName(value) { return value === "web" ? (state.lang === "ru" ? "Сайт" : "Web sayt") : (value === "instagram" ? "Instagram" : value === "telegram" ? "Telegram" : value); }
+const list = document.getElementById("list");
+const qEl = document.getElementById("q");
+const backdrop = document.getElementById("sheetBackdrop");
+let activeFilter = null;
+let debounceTimer;
+
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function(c) {
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
 function money(amount, currency) {
   if (amount == null) return tr("noPrice");
   const formatted = new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 }).format(amount);
