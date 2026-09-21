@@ -361,8 +361,12 @@ def hot_offers(limit: int = Query(default=10, ge=3, le=20)) -> dict:
     family_terms = ("%oilaviy%", "%oila%", "%family%", "%семейн%", "%семья%", "%bolalar%", "%детей%", "%детск%")
 
     def fetch_group(db, extra_conditions: list, order_by: tuple) -> list[tuple]:
+        # JOIN shart: "oilaviy" sharti RawPost.text ga murojaat qiladi. JOIN'siz
+        # SQLAlchemy raw_posts ni FROM'ga o'zi qo'shadi va tours x raw_posts
+        # dekart ko'paytmasi chiqadi — so'rov daqiqalab osilib qoladi.
         return db.execute(
             select(Tour)
+            .join(RawPost, RawPost.id == Tour.raw_post_id, isouter=True)
             .where(*base, *extra_conditions)
             .order_by(*order_by)
             .limit(limit)
