@@ -26,8 +26,8 @@ from ..config import settings
 from ..db import Channel, RawPost, SessionLocal, Tour, active_channels, init_db, save_channel_meta
 
 log = logging.getLogger(__name__)
-MEDIA_DIR = Path(__file__).resolve().parents[2] / "media" / "telegram"
-CHANNEL_MEDIA_DIR = MEDIA_DIR.parent / "channels"
+# Tur rasmlari yuklanmaydi va saqlanmaydi — faqat kanal avatarlari.
+CHANNEL_MEDIA_DIR = Path(__file__).resolve().parents[2] / "media" / "channels"
 AVATAR_MAX_AGE = timedelta(days=7)   # avatar shundan eski bo'lsa qayta olinadi
 
 
@@ -152,9 +152,7 @@ async def scrape(full: bool = False, only: str | None = None) -> int:
         return 0
 
     saved = 0
-    images = 0
     started = time.perf_counter()
-    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     async with _make_client() as client:
         with SessionLocal() as db:
             for channel in channels:
@@ -179,7 +177,6 @@ async def scrape(full: bool = False, only: str | None = None) -> int:
                 await _refresh_channel_meta(client, db, channel, entity)
 
                 count = 0
-                channel_images = 0
                 async for msg in client.iter_messages(
                     entity, limit=settings.scrape_limit or None, min_id=min_id
                 ):
@@ -198,18 +195,6 @@ async def scrape(full: bool = False, only: str | None = None) -> int:
                     # hech qanday parser ishlatilmaydi.
                     if settings.scrape_prefilter and not _worth_storing(msg.message):
                         continue
-                    photo_url = None
-                    if msg.photo:
-                        filename = f"{channel}_{msg.id}.jpg"
-                        target = MEDIA_DIR / filename
-                        try:
-                            downloaded = await client.download_media(msg.photo, file=str(target))
-                            if downloaded:
-                                photo_url = f"/media/telegram/{Path(downloaded).name}"
-                                channel_images += 1
-                        except Exception as exc:
-                            log.warning("rasm yuklanmadi %s:%s: %s", channel, msg.id, exc)
-
                     db.add(
                         RawPost(
                             source="telegram",
@@ -217,7 +202,6 @@ async def scrape(full: bool = False, only: str | None = None) -> int:
                             channel=channel,
                             url=f"https://t.me/{channel}/{msg.id}",
                             text=msg.message,
-                            photo_url=photo_url,
                             comment_available=bool(msg.replies and msg.replies.comments),
                             posted_at=msg.date.replace(tzinfo=None) if msg.date else None,
                             content_hash=content_hash(msg.message),
@@ -227,12 +211,11 @@ async def scrape(full: bool = False, only: str | None = None) -> int:
                     count += 1
                 db.commit()
                 saved += count
-                images += channel_images
                 log.info(
-                    "%s: %d yangi post, %d rasm, %.2f soniya",
-                    channel, count, channel_images, time.perf_counter() - channel_started,
+                    "%s: %d yangi post, %.2f soniya",
+                    channel, count, time.perf_counter() - channel_started,
                 )
-    log.info("jami: %d post, %d rasm, %.2f soniya", saved, images, time.perf_counter() - started)
+    log.info("jami: %d post, %.2f soniya", saved, time.perf_counter() - started)
     return saved
 
 

@@ -135,7 +135,6 @@ def _serialize(t: Tour, original_text: str | None = None, stats: dict | None = N
         "channel_title": meta.get("title") or None,
         "channel_avatar": _public_media_url(meta.get("avatar_url")),
         "url": t.url,
-        "photo_url": _public_media_url(t.photo_url),
         "posted_at": t.posted_at.isoformat() if t.posted_at else None,
         "created_at": t.created_at.isoformat() if t.created_at else None,
         "original_text": original_text,
@@ -523,8 +522,6 @@ def recommendations(
             reasons.append("history")
         if tour.id in viewed_ids:
             score -= 3
-        if tour.photo_url:
-            score += 2
         ranked.append((score, tour.posted_at or tour.created_at, tour, original, available, reasons,
                        destination_match, budget_match, date_distance))
 

@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import (
@@ -20,6 +21,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from .config import settings
+
+log = logging.getLogger(__name__)
 
 engine = create_engine(
     settings.database_url,
@@ -52,7 +55,6 @@ class RawPost(Base):
     channel: Mapped[str] = mapped_column(String(128))
     url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     text: Mapped[str] = mapped_column(Text)
-    photo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     comment_available: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -90,7 +92,6 @@ class Tour(Base):
     source: Mapped[str] = mapped_column(String(32))
     channel: Mapped[str] = mapped_column(String(128))
     url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    photo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     title: Mapped[str] = mapped_column(String(256))
     country: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -317,17 +318,14 @@ def _seed_channels_from_env() -> None:
         db.commit()
 
 
-def purge_channel(username: str) -> tuple[int, int, list[str]]:
+def purge_channel(username: str) -> tuple[int, int]:
     """Kanalning barcha postlari va turlarini o'chiradi.
 
-    Qaytaradi: (o'chirilgan turlar, o'chirilgan postlar, rasm yo'llari).
-    Rasm fayllarini o'chirish chaqiruvchining ishi — bu funksiya faqat baza.
+    Qaytaradi: (o'chirilgan turlar, o'chirilgan postlar). Kanal avatari
+    faylini o'chirish chaqiruvchining ishi — bu funksiya faqat baza.
     """
     with SessionLocal() as db:
         tour_ids = db.scalars(select(Tour.id).where(Tour.channel == username)).all()
-        photos = [p for p in db.scalars(
-            select(RawPost.photo_url).where(RawPost.channel == username, RawPost.photo_url.is_not(None))
-        ).all()]
         if tour_ids:
             db.execute(delete(TourView).where(TourView.tour_id.in_(tour_ids)))
             db.execute(delete(TourLike).where(TourLike.tour_id.in_(tour_ids)))
@@ -336,7 +334,7 @@ def purge_channel(username: str) -> tuple[int, int, list[str]]:
             db.execute(delete(Tour).where(Tour.id.in_(tour_ids)))
         posts = db.execute(delete(RawPost).where(RawPost.channel == username)).rowcount
         db.commit()
-    return len(tour_ids), posts, photos
+    return len(tour_ids), posts
 
 
 def _backfill_existing_users() -> None:
@@ -405,6 +403,15 @@ def init_db() -> None:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE app_users ADD COLUMN acquisition_source VARCHAR(32)"))
             connection.execute(text("CREATE INDEX ix_app_users_acquisition_source ON app_users (acquisition_source)"))
+    # Tur rasmlari endi saqlanmaydi — eski ustunlar bo'lsa tashlanadi. SQLite
+    # DROP COLUMN ni 3.35+ da qo'llaydi; lokal test bazasi uchun xato yutiladi.
+    for table in ("raw_posts", "tours"):
+        if "photo_url" in {c["name"] for c in inspect(engine).get_columns(table)}:
+            try:
+                with engine.begin() as connection:
+                    connection.execute(text(f"ALTER TABLE {table} DROP COLUMN photo_url"))
+            except Exception as exc:
+                log.warning("%s.photo_url tashlanmadi: %s", table, exc)
     channel_columns = {c["name"] for c in inspect(engine).get_columns("channels")}
     channel_new = {
         "title": "VARCHAR(256)",

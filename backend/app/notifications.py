@@ -477,22 +477,18 @@ def block_channel(raw: str) -> str:
             item.status = "blocked"
         db.commit()
 
-    tours, posts, photos = purge_channel(username)
-    removed_files = 0
-    for photo in photos:
-        # photo_url: /media/telegram/<kanal>_<id>.jpg -> backend/media/telegram/...
-        target = MEDIA_DIR / photo.removeprefix("/media/").lstrip("/")
-        try:
-            target.unlink(missing_ok=True)
-            removed_files += 1
-        except OSError as exc:
-            log.warning("rasm o'chirilmadi %s: %s", target, exc)
+    tours, posts = purge_channel(username)
+    # Kanal avatari ham ketadi — bloklangan kanal ilovada hech qayerda ko'rinmaydi.
+    try:
+        (MEDIA_DIR / "channels" / f"{username}.jpg").unlink(missing_ok=True)
+    except OSError as exc:
+        log.warning("avatar o'chirilmadi %s: %s", username, exc)
 
     cache_delete_pattern("tours:*")
     cache_delete_pattern("filters:*")
     return "\n".join([
         f"🚫 @{escape(username)} bloklandi.",
-        f"O'chirildi: <b>{tours}</b> tur · <b>{posts}</b> post · <b>{removed_files}</b> rasm",
+        f"O'chirildi: <b>{tours}</b> tur · <b>{posts}</b> post",
         "",
         "Qayta qo'shish uchun: <code>/add @" + escape(username) + "</code>",
         "",

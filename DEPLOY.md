@@ -103,18 +103,20 @@ python -m app.scraper.telegram --login
 
 Konteyner ichida ilova `app` foydalanuvchisi sifatida ishlaydi, `backend/media`
 esa hostda root nomidan yaratiladi (`git clone` root bilan bajarilsa). Bu holda
-scraper rasm saqlay olmaydi va `create` jobi shu xato bilan yiqiladi:
+scraper kanal avatarini saqlay olmaydi va `create` jobi shu xato bilan yiqiladi:
 
 ```
-PermissionError: [Errno 13] Permission denied: '/app/media/telegram'
+PermissionError: [Errno 13] Permission denied: '/app/media/channels'
 ```
 
 Shuning uchun konteyner ko'tarilgandan keyin bir marta:
 
 ```bash
-APP_UID=$(docker compose -f docker-compose.prod.yml exec -T api id -u app | tr -d '')
-APP_GID=$(docker compose -f docker-compose.prod.yml exec -T api id -g app | tr -d '')
-mkdir -p backend/media/telegram
+APP_UID=$(docker compose -f docker-compose.prod.yml exec -T api id -u app | tr -d '
+')
+APP_GID=$(docker compose -f docker-compose.prod.yml exec -T api id -g app | tr -d '
+')
+mkdir -p backend/media/channels
 chown -R "$APP_UID:$APP_GID" backend/media
 ```
 

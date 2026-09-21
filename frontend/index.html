@@ -132,7 +132,6 @@
   .hot-tab-icon { width:16px; height:16px; flex:0 0 16px; }
   .hot-track { display:flex; gap:10px; margin:0 -14px; padding:0 14px 5px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
   .hot-card { position:relative; flex:0 0 min(76vw,270px); height:128px; overflow:hidden; scroll-snap-align:start; border:1px solid var(--ui-border); border-radius:19px; color:#fff; background:linear-gradient(135deg,#1e3a5f,#2563eb); box-shadow:0 8px 22px rgba(15,23,42,.1); cursor:pointer; }
-  .hot-card img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .hot-card-shade { position:absolute; inset:0; background:linear-gradient(90deg,rgba(2,6,23,.88),rgba(2,6,23,.36)); }
   .hot-card-body { position:relative; z-index:1; height:100%; padding:14px; display:flex; flex-direction:column; justify-content:flex-end; text-align:left; }
   .hot-card-route { overflow:hidden; font-size:16px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
@@ -1107,8 +1106,8 @@ async function syncInteractions(ids) {
 
 function hotCard(item) {
   const route = [locationName(item.country), locationName(item.city)].filter(Boolean).join(" · ") || tr("routeUnknown");
-  const image = item.photo_url ? '<img src="' + escapeHtml(item.photo_url) + '" alt="" loading="lazy">' : '';
-  return '<button class="hot-card" type="button" data-hot-tour-id="' + item.id + '">' + image +
+  // Tur rasmlari saqlanmaydi — kartaning o'z gradient foni ishlatiladi.
+  return '<button class="hot-card" type="button" data-hot-tour-id="' + item.id + '">' +
     '<span class="hot-card-shade"></span><span class="hot-card-body"><span class="hot-card-route">' + escapeHtml(route) + '</span>' +
     '<span class="hot-card-meta"><span>' + escapeHtml(formatDate(item.departure_date)) + '</span><span class="hot-card-price">' + escapeHtml(money(item.price_amount,item.price_currency)) + '</span></span></span></button>';
 }

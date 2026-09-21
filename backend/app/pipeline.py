@@ -220,7 +220,6 @@ def process_pending(limit: int | None = 200) -> PipelineResult:
                 target.source = post.source
                 target.channel = post.channel
                 target.url = post.url
-                target.photo_url = post.photo_url
                 target.title = result.title or (result.city or result.country or "Tur")
                 target.country = result.country
                 target.city = result.city

@@ -6,7 +6,6 @@ ya'ni bu tabiiy tarqalish kanali.
 
 Telegram cheklovlari, e'tiborga olingan:
   - inline natijada `web_app` tugmasi ishlamaydi, faqat `url` bo'ladi
-  - rasm URL'i ochiq HTTPS bo'lishi shart (nisbiy yo'l ishlamaydi)
   - bir so'rovga ko'pi bilan 50 ta natija
 """
 from __future__ import annotations
@@ -16,7 +15,6 @@ import logging
 from sqlalchemy import or_, select
 
 from .bot_setup import bot_api, bot_username
-from .config import settings
 from .db import SessionLocal, Tour, cutoff_date, strict_tour_conditions
 
 log = logging.getLogger(__name__)
@@ -24,18 +22,6 @@ log = logging.getLogger(__name__)
 MAX_RESULTS = 30
 CACHE_SECONDS = 60
 
-
-
-def _public_url(path: str | None) -> str | None:
-    """Nisbiy media yo'lini ochiq HTTPS manzilga aylantiradi."""
-    if not path:
-        return None
-    if path.startswith("http"):
-        return path
-    base = (settings.media_base_url or settings.telegram_webapp_url or "").rstrip("/")
-    if not base.startswith("https://"):
-        return None
-    return base + path
 
 
 def _money(amount: float | None, currency: str | None) -> str:
@@ -104,9 +90,6 @@ def _result(tour: Tour) -> dict:
             "disable_web_page_preview": True,
         },
     }
-    thumb = _public_url(tour.photo_url)
-    if thumb:
-        item["thumbnail_url"] = thumb
     if buttons:
         item["reply_markup"] = {"inline_keyboard": buttons}
     return item
