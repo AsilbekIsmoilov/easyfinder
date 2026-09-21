@@ -10,7 +10,7 @@ from sqlalchemy import delete, or_, select
 
 from .claude_extractor import ClaudeUnavailableError
 from .db import (
-    RawPost, SessionLocal, Tour, TourComment, TourFeedback, TourLike, TourView,
+    RawPost, SessionLocal, Tour, TourFeedback, TourLike, TourView,
     cleanup_expired_tours, init_db,
 )
 from .extractor import extract_many
@@ -261,7 +261,6 @@ def process_pending(limit: int | None = 200) -> PipelineResult:
             if stale_ids:
                 db.execute(delete(TourView).where(TourView.tour_id.in_(stale_ids)))
                 db.execute(delete(TourLike).where(TourLike.tour_id.in_(stale_ids)))
-                db.execute(delete(TourComment).where(TourComment.tour_id.in_(stale_ids)))
                 db.execute(delete(TourFeedback).where(TourFeedback.tour_id.in_(stale_ids)))
                 db.execute(delete(Tour).where(Tour.id.in_(stale_ids)))
             db.commit()

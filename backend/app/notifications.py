@@ -17,7 +17,7 @@ from .auth import parse_source
 from .bot_setup import bot_api, bot_username
 from .config import settings
 from .db import (  # noqa: F401  (Tour update hisobotida)
-    AppUserRecord, Channel, NotificationSubscriber, SessionLocal, Tour, TourComment, TourLike,
+    AppUserRecord, Channel, NotificationSubscriber, SessionLocal, Tour, TourFeedback, TourLike,
     TourView, cutoff_date, normalize_channel, purge_channel, strict_tour_conditions,
 )
 from .services import cache_delete_pattern, rate_allowed
@@ -307,7 +307,7 @@ def _channel_stats() -> list[dict]:
             ).all()
             return {tour_id: count for tour_id, count in rows}
 
-        views, likes, comments = totals(TourView), totals(TourLike), totals(TourComment)
+        views, likes, comments = totals(TourView), totals(TourLike), totals(TourFeedback)
 
     channels: dict[str, dict] = {}
     for tour in tours:

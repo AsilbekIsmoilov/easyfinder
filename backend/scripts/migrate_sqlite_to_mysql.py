@@ -15,9 +15,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import create_engine, delete, func, insert, select
 from sqlalchemy.orm import Session
 
-from app.db import Base, RawPost, Tour, TourComment, TourLike, TourView
+from app.db import Base, RawPost, Tour, TourFeedback, TourLike, TourView
 
-MODELS = (RawPost, Tour, TourView, TourLike, TourComment)
+MODELS = (RawPost, Tour, TourView, TourLike, TourFeedback)
 
 
 def row_mapping(item, model) -> dict:

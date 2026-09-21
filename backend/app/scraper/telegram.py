@@ -202,7 +202,6 @@ async def scrape(full: bool = False, only: str | None = None) -> int:
                             channel=channel,
                             url=f"https://t.me/{channel}/{msg.id}",
                             text=msg.message,
-                            comment_available=bool(msg.replies and msg.replies.comments),
                             posted_at=msg.date.replace(tzinfo=None) if msg.date else None,
                             content_hash=content_hash(msg.message),
                             edit_date=msg.edit_date.replace(tzinfo=None) if msg.edit_date else None,
@@ -295,7 +294,6 @@ async def refresh(limit: int | None = None) -> list[int]:
                     post.text = msg.message
                     post.content_hash = fresh
                     post.edit_date = edited
-                    post.comment_available = bool(msg.replies and msg.replies.comments)
                     post.processed = False
                     post.processing_status = "pending"
                     post.last_error = None

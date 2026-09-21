@@ -24,10 +24,9 @@ from .bot_setup import bot_username
 from .inline import handle_inline_query
 from .notifications import _admin_chats, handle_bot_update, subscribe, webhook_secret
 from .db import (
-    RawPost, SessionLocal, Tour, TourComment, TourFeedback, TourLike, TourView, UserActivity, UserPreference,
+    RawPost, SessionLocal, Tour, TourFeedback, TourLike, TourView, UserActivity, UserPreference,
     channel_meta, cleanup_expired_tours, cutoff_date, init_db, strict_tour_conditions,
 )
-from .telegram_comments import send_source_comment
 from .services import cache_get, cache_set, rate_allowed, redis_client
 from .config import settings
 
@@ -111,7 +110,7 @@ def _channel_meta_cached() -> dict[str, dict]:
     return data
 
 
-def _serialize(t: Tour, original_text: str | None = None, stats: dict | None = None, comment_available: bool = False) -> dict:
+def _serialize(t: Tour, original_text: str | None = None, stats: dict | None = None) -> dict:
     # Qaytish sanasi, ovqatlanish va mehmonxona chiqarilmaydi — ular endi
     # ajratilmaydi va UI da ham ko'rsatilmaydi.
     details = t.details or {}
@@ -139,7 +138,6 @@ def _serialize(t: Tour, original_text: str | None = None, stats: dict | None = N
         "created_at": t.created_at.isoformat() if t.created_at else None,
         "original_text": original_text,
         "stats": stats or {"views": 0, "likes": 0, "comments": 0, "liked": False},
-        "comment_available": bool(comment_available),
     }
 
 
@@ -333,7 +331,7 @@ def list_tours(
     order = (Tour.posted_at.is_(None), Tour.posted_at.desc(), Tour.id.desc())
     original_column = RawPost.text if include_original else literal(None).label("text")
     stmt = (
-        select(Tour, original_column, RawPost.comment_available)
+        select(Tour, original_column)
         .join(RawPost, RawPost.id == Tour.raw_post_id, isouter=True)
         .where(*conditions)
         .order_by(*order)
@@ -348,7 +346,7 @@ def list_tours(
 
     stats = _interaction_stats([tour.id for tour, _, _ in rows])
     data = {
-        "items": [_serialize(tour, raw, stats.get(tour.id), available) for tour, raw, available in rows],
+        "items": [_serialize(tour, raw, stats.get(tour.id)) for tour, raw in rows],
         "count": total,
         "limit_per_channel": None,
         "cutoff_date": cutoff_date(),
@@ -364,8 +362,7 @@ def hot_offers(limit: int = Query(default=10, ge=3, le=20)) -> dict:
 
     def fetch_group(db, extra_conditions: list, order_by: tuple) -> list[tuple]:
         return db.execute(
-            select(Tour, RawPost.comment_available)
-            .join(RawPost, RawPost.id == Tour.raw_post_id, isouter=True)
+            select(Tour)
             .where(*base, *extra_conditions)
             .order_by(*order_by)
             .limit(limit)
@@ -383,11 +380,11 @@ def hot_offers(limit: int = Query(default=10, ge=3, le=20)) -> dict:
         ])
         family = fetch_group(db, [family_condition], (Tour.departure_date.asc(), Tour.price_amount.asc()))
 
-    all_ids = list({tour.id for rows in (cheap, soon, family) for tour, _ in rows})
+    all_ids = list({tour.id for rows in (cheap, soon, family) for (tour,) in rows})
     stats = _interaction_stats(all_ids)
 
     def serialize_group(rows: list[tuple]) -> list[dict]:
-        return [_serialize(tour, None, stats.get(tour.id), available) for tour, available in rows]
+        return [_serialize(tour, None, stats.get(tour.id)) for (tour,) in rows]
 
     return {
         "cheap": serialize_group(cheap),
@@ -412,10 +409,8 @@ def _interaction_stats(tour_ids: list[int], user_key: str | None = None) -> dict
         )
         .where(TourLike.tour_id.in_(tour_ids)).group_by(TourLike.tour_id).subquery()
     )
-    comment_counts = (
-        select(TourComment.tour_id, func.count(TourComment.id).label("comments"))
-        .where(TourComment.tour_id.in_(tour_ids)).group_by(TourComment.tour_id).subquery()
-    )
+    # Kartadagi "izoh" soni — faqat ilova ichidagi feedback. Kanalga yozish
+    # olib tashlangan.
     feedback_counts = (
         select(TourFeedback.tour_id, func.count(TourFeedback.id).label("feedback"))
         .where(TourFeedback.tour_id.in_(tour_ids)).group_by(TourFeedback.tour_id).subquery()
@@ -425,12 +420,11 @@ def _interaction_stats(tour_ids: list[int], user_key: str | None = None) -> dict
             Tour.id,
             func.coalesce(view_counts.c.views, 0),
             func.coalesce(like_counts.c.likes, 0),
-            func.coalesce(comment_counts.c.comments, 0) + func.coalesce(feedback_counts.c.feedback, 0),
+            func.coalesce(feedback_counts.c.feedback, 0),
             func.coalesce(like_counts.c.liked, 0),
         )
         .outerjoin(view_counts, view_counts.c.tour_id == Tour.id)
         .outerjoin(like_counts, like_counts.c.tour_id == Tour.id)
-        .outerjoin(comment_counts, comment_counts.c.tour_id == Tour.id)
         .outerjoin(feedback_counts, feedback_counts.c.tour_id == Tour.id)
         .where(Tour.id.in_(tour_ids))
     )
@@ -458,7 +452,7 @@ def recommendations(
             return {"items": [], "count": 0, "next_offset": None, "onboarding_required": True}
 
         rows = db.execute(
-            select(Tour, RawPost.text, RawPost.comment_available)
+            select(Tour, RawPost.text)
             .join(RawPost, RawPost.id == Tour.raw_post_id, isouter=True)
             .where(Tour.departure_date >= cutoff_date())
             .limit(600)
@@ -480,7 +474,7 @@ def recommendations(
     desired = preference.destination.casefold()
     desired_date = date.fromisoformat(preference.travel_date)
     ranked = []
-    for tour, original, available in rows:
+    for tour, original in rows:
         score = 0.0
         reasons = []
         destination_match = False
@@ -522,7 +516,7 @@ def recommendations(
             reasons.append("history")
         if tour.id in viewed_ids:
             score -= 3
-        ranked.append((score, tour.posted_at or tour.created_at, tour, original, available, reasons,
+        ranked.append((score, tour.posted_at or tour.created_at, tour, original, reasons,
                        destination_match, budget_match, date_distance))
 
     # Uchta javob ketma-ket amaliy filter bo'ladi. Bir bosqich nol natija bersa,
@@ -540,8 +534,8 @@ def recommendations(
     page = ranked[offset:offset + limit]
     stats = _interaction_stats([row[2].id for row in page], user.key)
     items = []
-    for score, _, tour, original, available, reasons, _, _, _ in page:
-        item = _serialize(tour, original, stats.get(tour.id), available)
+    for score, _, tour, original, reasons, _, _, _ in page:
+        item = _serialize(tour, original, stats.get(tour.id))
         item["recommendation"] = {"score": round(score, 2), "reasons": reasons}
         items.append(item)
     return {
@@ -605,13 +599,13 @@ def get_tour(tour_id: int, request: Request) -> dict:
     user = current_user(request)
     with SessionLocal() as db:
         row = db.execute(
-            select(Tour, RawPost.text, RawPost.comment_available)
+            select(Tour, RawPost.text)
             .join(RawPost, RawPost.id == Tour.raw_post_id, isouter=True)
             .where(Tour.id == tour_id)
         ).first()
     if not row:
         raise HTTPException(status_code=404, detail="Tur topilmadi")
-    return _serialize(row[0], row[1], _interaction_stats([tour_id], user.key)[tour_id], row[2])
+    return _serialize(row[0], row[1], _interaction_stats([tour_id], user.key)[tour_id])
 
 
 @app.post("/api/tours/{tour_id}/view")
@@ -642,73 +636,6 @@ def toggle_like(tour_id: int, request: Request) -> dict:
         db.commit()
     return _interaction_stats([tour_id], user.key)[tour_id]
 
-
-@app.get("/api/tours/{tour_id}/comments")
-def list_comments(tour_id: int, request: Request) -> dict:
-    current_user(request)
-    with SessionLocal() as db:
-        tour = _require_tour(db, tour_id)
-        raw = db.get(RawPost, tour.raw_post_id)
-        comment_available = bool(raw and raw.comment_available)
-        comments = db.scalars(
-            select(TourComment).where(TourComment.tour_id == tour_id)
-            .order_by(TourComment.created_at.asc()).limit(100)
-        ).all()
-    return {"comment_available": comment_available, "items": [
-        {"id": item.id, "display_name": item.display_name, "username": item.username,
-         "photo_url": item.photo_url, "profile_url": item.profile_url, "text": item.text,
-         "delivery_status": item.delivery_status, "created_at": item.created_at.isoformat()}
-        for item in comments
-    ]}
-
-
-@app.post("/api/tours/{tour_id}/comments")
-async def create_comment(tour_id: int, payload: CommentInput, request: Request) -> dict:
-    user = require_telegram_user(request)
-    _enforce_rate(user.key, "comment", 10, 300)
-    text_value = payload.text.strip()
-    if not text_value:
-        raise HTTPException(status_code=422, detail="Comment bo'sh bo'lmasligi kerak")
-    with SessionLocal() as db:
-        tour = _require_tour(db, tour_id)
-        raw = db.get(RawPost, tour.raw_post_id)
-        if not raw or not raw.comment_available:
-            raise HTTPException(status_code=409, detail="Bu kanal postida comment yozish imkoni mavjud emas")
-        item = TourComment(
-            tour_id=tour_id, user_key=user.key, display_name=user.display_name,
-            username=user.username, photo_url=user.photo_url, profile_url=user.profile_url,
-            text=text_value, delivery_status="local_only",
-        )
-        db.add(item)
-        db.commit()
-        db.refresh(item)
-        comment_id = item.id
-        source_id = raw.source_id if raw and raw.source == "telegram" else None
-
-    external_id = None
-    if source_id and ":" in source_id:
-        channel, message_id = source_id.rsplit(":", 1)
-        if message_id.isdigit():
-            external_id = await send_source_comment(channel, int(message_id), user.display_name, text_value)
-    if not external_id:
-        with SessionLocal() as db:
-            saved = db.get(TourComment, comment_id)
-            if saved:
-                db.delete(saved)
-                db.commit()
-        raise HTTPException(status_code=409, detail="Kanalda comment yuborish imkoni mavjud emas")
-    with SessionLocal() as db:
-        saved = db.get(TourComment, comment_id)
-        saved.delivery_status = "sent"
-        saved.external_message_id = external_id
-        db.commit()
-    stats = _interaction_stats([tour_id], user.key)[tour_id]
-    return {
-        "id": comment_id, "display_name": user.display_name, "username": user.username,
-        "photo_url": user.photo_url, "profile_url": user.profile_url, "text": text_value,
-        "delivery_status": "sent",
-        "created_at": item.created_at.isoformat(), "stats": stats,
-    }
 
 @app.get("/api/tours/{tour_id}/feedback")
 def list_feedback(tour_id: int, request: Request) -> dict:

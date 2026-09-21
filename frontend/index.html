@@ -841,10 +841,6 @@
   <div class="sheet comment-sheet">
     <div class="handle"></div>
     <div class="sheet-head"><h3 id="commentTitle">Izohlar</h3><button id="commentClose" class="sheet-close" aria-label="Yopish">✕</button></div>
-    <div class="comment-tabs" role="tablist">
-      <button id="channelCommentTab" class="comment-tab active" type="button" data-comment-tab="comments" role="tab">Kanalga comment</button>
-      <button id="feedbackTab" class="comment-tab" type="button" data-comment-tab="feedback" role="tab">Feedback</button>
-    </div>
     <div id="commentList" class="comment-list"></div>
     <div id="replyComposer" class="reply-composer" hidden><div class="reply-composer-copy"><strong id="replyComposerName"></strong><span id="replyComposerText"></span></div><button id="replyCancel" class="reply-cancel" type="button" aria-label="Javobni bekor qilish">✕</button></div>
     <form id="commentForm" class="comment-form">
@@ -928,17 +924,17 @@ if (previewTheme === "light" || previewTheme === "dark") {
 const state = {
   q:"", country:"", source:"", channel:"", selectedCountries:[], selectedSources:[], selectedChannels:[], minPrice:"", maxPrice:"",
   departureFrom:"", departureTo:"", returnFrom:"", returnTo:"",
-  lang:localStorage.getItem("tourLang") || "uz", activeTourId:null, activeCommentTab:"comments", activeFeedbackReply:null, offset:0, pageSize:20, total:0, loading:false, hasMore:false,
+  lang:localStorage.getItem("tourLang") || "uz", activeTourId:null, activeFeedbackReply:null, offset:0, pageSize:20, total:0, loading:false, hasMore:false,
   filters:{ countries:[], sources:[], channels:[] }, preferences:null, personalized:false, onboardingStep:0, hotTab:"cheap", hotOffers:{cheap:[],soon:[],family:[]}
 };
 const i18n = {
-  uz:{ hero:"Eng yaxshi turlarni bir joyda toping", intro:"Telegram, Instagram va saytlardagi tur e'lonlari bir joyda. Solishtiring, filtrlang va bevosita tur operatori bilan bog'laning.", search:"Davlat, shahar yoki tur nomi...", selected:"Saralangan turlar:", clear:"Tozalash", loading:"Yuklanmoqda...", tours:"ta tur", countries:"Barcha davlatlar", sources:"Barcha manbalar", channels:"Barcha kanallar", countryTitle:"Davlatni tanlang", sourceTitle:"Manbani tanlang", channelTitle:"Kanalni tanlang", price:"Narx", departure:"Ketish sanasi", returnDate:"Kelish sanasi", dates:"Safar sanalari", datesSelected:"Sanalar tanlangan", commentsUnavailable:"Kanalda comment yozish imkoni mavjud emas", from:"Dan", to:"Gacha", apply:"Qo‘llash", noPrice:"Narx aniqlanmagan", unspecified:"Ko‘rsatilmagan", days:"kun qoldi", departureFact:"Jo‘nash", duration:"Davomiylik", meal:"Ovqatlanish", details:"Batafsil ma’lumot", hotel:"Mehmonxona", departureCity:"Jo‘nash shahri", nights:"Kechalar", contact:"Bog‘lanish", booking:"Bron sharti", channelOpen:"Kanalga o‘tish →", empty:"Mos tur topilmadi", emptyHint:"Filterlarni o‘zgartirib ko‘ring.", comments:"Izohlar", commentPlaceholder:"Izoh yozing..." },
-  ru:{ hero:"Лучшие туры в одном месте", intro:"Туры из Telegram, Instagram и сайтов в одном приложении. Сравнивайте, фильтруйте и связывайтесь с туроператором.", search:"Страна, город или название тура...", selected:"Подобранные туры:", clear:"Очистить", loading:"Загрузка...", tours:"туров", countries:"Все страны", sources:"Все источники", channels:"Все каналы", countryTitle:"Выберите страну", sourceTitle:"Выберите источник", channelTitle:"Выберите канал", price:"Цена", departure:"Дата вылета", returnDate:"Дата возвращения", dates:"Даты поездки", datesSelected:"Даты выбраны", commentsUnavailable:"В канале нельзя оставлять комментарии", from:"От", to:"До", apply:"Применить", noPrice:"Цена не указана", unspecified:"Не указано", days:"дней осталось", departureFact:"Вылет", duration:"Длительность", meal:"Питание", details:"Подробнее", hotel:"Отель", departureCity:"Город вылета", nights:"Ночей", contact:"Контакты", booking:"Условия брони", channelOpen:"Открыть канал →", empty:"Подходящих туров нет", emptyHint:"Попробуйте изменить фильтры.", comments:"Комментарии", commentPlaceholder:"Напишите комментарий..." }
+  uz:{ hero:"Eng yaxshi turlarni bir joyda toping", intro:"Telegram, Instagram va saytlardagi tur e'lonlari bir joyda. Solishtiring, filtrlang va bevosita tur operatori bilan bog'laning.", search:"Davlat, shahar yoki tur nomi...", selected:"Saralangan turlar:", clear:"Tozalash", loading:"Yuklanmoqda...", tours:"ta tur", countries:"Barcha davlatlar", sources:"Barcha manbalar", channels:"Barcha kanallar", countryTitle:"Davlatni tanlang", sourceTitle:"Manbani tanlang", channelTitle:"Kanalni tanlang", price:"Narx", departure:"Ketish sanasi", returnDate:"Kelish sanasi", dates:"Safar sanalari", datesSelected:"Sanalar tanlangan", from:"Dan", to:"Gacha", apply:"Qo‘llash", noPrice:"Narx aniqlanmagan", unspecified:"Ko‘rsatilmagan", days:"kun qoldi", departureFact:"Jo‘nash", duration:"Davomiylik", meal:"Ovqatlanish", details:"Batafsil ma’lumot", hotel:"Mehmonxona", departureCity:"Jo‘nash shahri", nights:"Kechalar", contact:"Bog‘lanish", booking:"Bron sharti", channelOpen:"Kanalga o‘tish →", empty:"Mos tur topilmadi", emptyHint:"Filterlarni o‘zgartirib ko‘ring.", comments:"Izohlar" },
+  ru:{ hero:"Лучшие туры в одном месте", intro:"Туры из Telegram, Instagram и сайтов в одном приложении. Сравнивайте, фильтруйте и связывайтесь с туроператором.", search:"Страна, город или название тура...", selected:"Подобранные туры:", clear:"Очистить", loading:"Загрузка...", tours:"туров", countries:"Все страны", sources:"Все источники", channels:"Все каналы", countryTitle:"Выберите страну", sourceTitle:"Выберите источник", channelTitle:"Выберите канал", price:"Цена", departure:"Дата вылета", returnDate:"Дата возвращения", dates:"Даты поездки", datesSelected:"Даты выбраны", from:"От", to:"До", apply:"Применить", noPrice:"Цена не указана", unspecified:"Не указано", days:"дней осталось", departureFact:"Вылет", duration:"Длительность", meal:"Питание", details:"Подробнее", hotel:"Отель", departureCity:"Город вылета", nights:"Ночей", contact:"Контакты", booking:"Условия брони", channelOpen:"Открыть канал →", empty:"Подходящих туров нет", emptyHint:"Попробуйте изменить фильтры.", comments:"Комментарии" }
 };
-Object.assign(i18n.uz, { tourPackage:"Turpaket", routeUnknown:"Yo‘nalish aniqlanmagan", day:"kun", night:"kecha", returnLabel:"Qaytish sanasi", views:"Ko‘rishlar", like:"Yoqtirish", share:"Ulashish", filterTitle:"Filtrni tanlang", close:"Yopish", send:"Yuborish", loadError:"Ma’lumotlarni yuklab bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.", commentsEmpty:"Hozircha izoh yo‘q. Birinchi bo‘lib yozing.", commentsLoadError:"Izohlarni yuklab bo‘lmadi.", commentSendError:"Izoh yuborilmadi. Qayta urinib ko‘ring.", sharedTour:"Ulashilgan tur", loadingComments:"Yuklanmoqda...", shareMessage:"Ushbu turni EasyFinder(Beta) orqali tomosha qiling", telegramRequired:"Bu amal uchun ilovani Telegram orqali oching." });
-Object.assign(i18n.ru, { tourPackage:"Турпакет", routeUnknown:"Направление не указано", day:"дней", night:"ночей", returnLabel:"Дата возвращения", views:"Просмотры", like:"Нравится", share:"Поделиться", filterTitle:"Выберите фильтр", close:"Закрыть", send:"Отправить", loadError:"Не удалось загрузить данные. Попробуйте ещё раз позже.", commentsEmpty:"Комментариев пока нет. Оставьте первый комментарий.", commentsLoadError:"Не удалось загрузить комментарии.", commentSendError:"Не удалось отправить комментарий. Попробуйте ещё раз.", sharedTour:"Отправленный тур", loadingComments:"Загрузка...", shareMessage:"Посмотрите этот тур в EasyFinder(Beta)", telegramRequired:"Для этого действия откройте приложение через Telegram." });function tr(key) { return (i18n[state.lang] && i18n[state.lang][key]) || i18n.uz[key] || key; }
-Object.assign(i18n.uz, { showMore:"Batafsil ko‘rish", showLess:"Yopish", channelComment:"Kanalga comment", feedback:"Feedback", feedbackPlaceholder:"Fikringizni yozing...", feedbackEmpty:"Hozircha feedback yo‘q.", feedbackSendError:"Feedback yuborilmadi. Qayta urinib ko‘ring.", cityStay:"Shaharda qolish" });
-Object.assign(i18n.ru, { showMore:"Показать подробнее", showLess:"Свернуть", channelComment:"Комментарий в канал", feedback:"Обратная связь", feedbackPlaceholder:"Напишите ваше мнение...", feedbackEmpty:"Отзывов пока нет.", feedbackSendError:"Не удалось отправить отзыв. Попробуйте ещё раз.", cityStay:"Проживание в городе" });
+Object.assign(i18n.uz, { tourPackage:"Turpaket", routeUnknown:"Yo‘nalish aniqlanmagan", day:"kun", night:"kecha", returnLabel:"Qaytish sanasi", views:"Ko‘rishlar", like:"Yoqtirish", share:"Ulashish", filterTitle:"Filtrni tanlang", close:"Yopish", send:"Yuborish", loadError:"Ma’lumotlarni yuklab bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.", commentsLoadError:"Izohlarni yuklab bo‘lmadi.", sharedTour:"Ulashilgan tur", loadingComments:"Yuklanmoqda...", shareMessage:"Ushbu turni EasyFinder(Beta) orqali tomosha qiling", telegramRequired:"Bu amal uchun ilovani Telegram orqali oching." });
+Object.assign(i18n.ru, { tourPackage:"Турпакет", routeUnknown:"Направление не указано", day:"дней", night:"ночей", returnLabel:"Дата возвращения", views:"Просмотры", like:"Нравится", share:"Поделиться", filterTitle:"Выберите фильтр", close:"Закрыть", send:"Отправить", loadError:"Не удалось загрузить данные. Попробуйте ещё раз позже.", commentsLoadError:"Не удалось загрузить комментарии.", sharedTour:"Отправленный тур", loadingComments:"Загрузка...", shareMessage:"Посмотрите этот тур в EasyFinder(Beta)", telegramRequired:"Для этого действия откройте приложение через Telegram." });function tr(key) { return (i18n[state.lang] && i18n[state.lang][key]) || i18n.uz[key] || key; }
+Object.assign(i18n.uz, { showMore:"Batafsil ko‘rish", showLess:"Yopish", feedback:"Feedback", feedbackPlaceholder:"Fikringizni yozing...", feedbackEmpty:"Hozircha feedback yo‘q.", feedbackSendError:"Feedback yuborilmadi. Qayta urinib ko‘ring.", cityStay:"Shaharda qolish" });
+Object.assign(i18n.ru, { showMore:"Показать подробнее", showLess:"Свернуть", feedback:"Обратная связь", feedbackPlaceholder:"Напишите ваше мнение...", feedbackEmpty:"Отзывов пока нет.", feedbackSendError:"Не удалось отправить отзыв. Попробуйте ещё раз.", cityStay:"Проживание в городе" });
 Object.assign(i18n.uz, { reply:"Javob berish", replyingTo:"Javob:", cancelReply:"Javobni bekor qilish" });
 Object.assign(i18n.ru, { reply:"Ответить", replyingTo:"Ответ для:", cancelReply:"Отменить ответ" });
 Object.assign(i18n.uz, { termsLink:"Foydalanish shartlari", privacyLink:"Maxfiylik", howLink:"Qanday ishlaydi?" });
@@ -1313,50 +1309,32 @@ function setFeedbackReply(item) {
   document.getElementById("replyComposer").hidden = false;
   document.getElementById("commentInput").focus();
 }
+// Izohlar faqat ilova ichida (feedback). Kanalga yozish olib tashlandi:
+// Mini App foydalanuvchi nomidan yozolmaydi, izohlar bitta akkaunt nomidan
+// ketardi va kanal admini kim so'rayotganini bilmasdi.
 async function loadCommentTab() {
   const tourId = state.activeTourId;
   if (!tourId) return;
-  const isFeedback = state.activeCommentTab === "feedback";
   const input = document.getElementById("commentInput");
   const send = document.getElementById("commentSend");
   commentList.innerHTML = '<div class="comment-empty">' + tr("loadingComments") + '</div>';
-  input.placeholder = tr(isFeedback ? "feedbackPlaceholder" : "commentPlaceholder");
+  input.placeholder = tr("feedbackPlaceholder");
   input.disabled = send.disabled = false;
   try {
-    const response = await apiFetch("/api/tours/" + tourId + "/" + (isFeedback ? "feedback" : "comments"));
+    const response = await apiFetch("/api/tours/" + tourId + "/feedback");
     if (!response.ok) throw new Error("Load");
     const data = await response.json();
-    if (!isFeedback && !data.comment_available) {
-      input.disabled = send.disabled = true;
-      commentList.innerHTML = '<div class="comment-empty">' + escapeHtml(tr("commentsUnavailable")) + '</div>';
-      return;
-    }
-    const emptyKey = isFeedback ? "feedbackEmpty" : "commentsEmpty";
-    commentList.innerHTML = data.items.length ? data.items.map(function(item) { return commentMarkup(item, isFeedback); }).join("") : '<div class="comment-empty">' + tr(emptyKey) + '</div>';
+    commentList.innerHTML = data.items.length ? data.items.map(function(item) { return commentMarkup(item, true); }).join("") : '<div class="comment-empty">' + tr("feedbackEmpty") + '</div>';
     commentList.scrollTop = commentList.scrollHeight;
   } catch (error) {
     commentList.innerHTML = '<div class="comment-empty">' + tr("commentsLoadError") + '</div>';
   }
 }
-function selectCommentTab(tab) {
-  clearFeedbackReply();
-  state.activeCommentTab = tab;
-  document.querySelectorAll("[data-comment-tab]").forEach(function(button) {
-    const active = button.dataset.commentTab === tab;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", String(active));
-  });
-  loadCommentTab();
-}
 async function openComments(tourId) {
   state.activeTourId = tourId;
-  state.activeCommentTab = "comments";
   clearFeedbackReply();
   commentBackdrop.classList.add("open");
   document.body.style.overflow = "hidden";
-  document.querySelectorAll("[data-comment-tab]").forEach(function(button) {
-    button.classList.toggle("active", button.dataset.commentTab === "comments");
-  });
   await loadCommentTab();
 }
 function closeComments() {
@@ -1384,9 +1362,7 @@ function applyLanguage() {
   updateToolbarHeading();
   document.getElementById("reset").textContent = tr("clear");
   document.getElementById("commentTitle").textContent = tr("comments");
-  document.getElementById("commentInput").placeholder = tr(state.activeCommentTab === "feedback" ? "feedbackPlaceholder" : "commentPlaceholder");
-  document.getElementById("channelCommentTab").textContent = tr("channelComment");
-  document.getElementById("feedbackTab").textContent = tr("feedback");
+  document.getElementById("commentInput").placeholder = tr("feedbackPlaceholder");
   document.getElementById("resultNote").textContent = tr("loading");
   qEl.setAttribute("aria-label", tr("search"));
   document.getElementById("clearSearch").setAttribute("aria-label", tr("clear"));
@@ -1499,7 +1475,7 @@ commentList.addEventListener("click", function(e) {
     return;
   }
   const replyButton = e.target.closest("[data-reply-id]");
-  if (replyButton && state.activeCommentTab === "feedback") {
+  if (replyButton) {
     setFeedbackReply({id:Number(replyButton.dataset.replyId), name:replyButton.dataset.replyName, text:replyButton.dataset.replyText});
     return;
   }
@@ -1509,9 +1485,6 @@ commentList.addEventListener("click", function(e) {
   const url = profileLink.dataset.profile;
   if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
   else window.open(url, "_blank");
-});
-document.querySelectorAll("[data-comment-tab]").forEach(function(button) {
-  button.addEventListener("click", function() { selectCommentTab(button.dataset.commentTab); });
 });
 document.getElementById("commentClose").addEventListener("click", closeComments);
 document.getElementById("replyCancel").addEventListener("click", clearFeedbackReply);
@@ -1524,8 +1497,8 @@ document.getElementById("commentForm").addEventListener("submit", async function
   if (!text || !state.activeTourId) return;
   send.disabled = true;
   try {
-    const response = await apiFetch("/api/tours/" + state.activeTourId + "/" + (state.activeCommentTab === "feedback" ? "feedback" : "comments"), {
-      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:text, reply_to_id:state.activeCommentTab === "feedback" && state.activeFeedbackReply ? state.activeFeedbackReply.id : null})
+    const response = await apiFetch("/api/tours/" + state.activeTourId + "/feedback", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:text, reply_to_id:state.activeFeedbackReply ? state.activeFeedbackReply.id : null})
     });
     if (response.status === 401) {
       if (tg && tg.showAlert) tg.showAlert(tr("telegramRequired"));
@@ -1535,13 +1508,13 @@ document.getElementById("commentForm").addEventListener("submit", async function
     if (!response.ok) throw new Error("Comment");
     const item = await response.json();
     if (commentList.querySelector(".comment-empty")) commentList.innerHTML = "";
-    commentList.insertAdjacentHTML("beforeend", commentMarkup(item, state.activeCommentTab === "feedback"));
+    commentList.insertAdjacentHTML("beforeend", commentMarkup(item, true));
     commentList.scrollTop = commentList.scrollHeight;
     input.value = "";
     clearFeedbackReply();
     if (item.stats) updateCardStats(state.activeTourId, item.stats);
   } catch (error) {
-    if (tg && tg.showAlert) tg.showAlert(tr(state.activeCommentTab === "feedback" ? "feedbackSendError" : "commentSendError"));
+    if (tg && tg.showAlert) tg.showAlert(tr("feedbackSendError"));
   } finally { send.disabled = false; }
 });
 const scrollTopButton = document.getElementById("scrollTop");

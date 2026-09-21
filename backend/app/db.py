@@ -55,7 +55,6 @@ class RawPost(Base):
     channel: Mapped[str] = mapped_column(String(128))
     url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     text: Mapped[str] = mapped_column(Text)
-    comment_available: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -157,21 +156,6 @@ class TourLike(Base):
     user_key: Mapped[str] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
-
-class TourComment(Base):
-    __tablename__ = "tour_comments"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    tour_id: Mapped[int] = mapped_column(Integer, index=True)
-    user_key: Mapped[str] = mapped_column(String(128), index=True)
-    display_name: Mapped[str] = mapped_column(String(128))
-    username: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    photo_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
-    profile_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    text: Mapped[str] = mapped_column(Text)
-    delivery_status: Mapped[str] = mapped_column(String(24), default="local_only")
-    external_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 class TourFeedback(Base):
     __tablename__ = "tour_feedback"
@@ -329,7 +313,6 @@ def purge_channel(username: str) -> tuple[int, int]:
         if tour_ids:
             db.execute(delete(TourView).where(TourView.tour_id.in_(tour_ids)))
             db.execute(delete(TourLike).where(TourLike.tour_id.in_(tour_ids)))
-            db.execute(delete(TourComment).where(TourComment.tour_id.in_(tour_ids)))
             db.execute(delete(TourFeedback).where(TourFeedback.tour_id.in_(tour_ids)))
             db.execute(delete(Tour).where(Tour.id.in_(tour_ids)))
         posts = db.execute(delete(RawPost).where(RawPost.channel == username)).rowcount
@@ -344,10 +327,10 @@ def _backfill_existing_users() -> None:
             return
         keys = set(db.scalars(select(TourView.viewer_key).distinct()).all())
         keys.update(db.scalars(select(TourLike.user_key).distinct()).all())
-        keys.update(db.scalars(select(TourComment.user_key).distinct()).all())
+        keys.update(db.scalars(select(TourFeedback.user_key).distinct()).all())
         comment_users = {
             row.user_key: row for row in db.scalars(
-                select(TourComment).order_by(TourComment.created_at.desc())
+                select(TourFeedback).order_by(TourFeedback.created_at.desc())
             ).all()
         }
         now = utcnow()
@@ -441,20 +424,17 @@ def init_db() -> None:
             connection.execute(text("ALTER TABLE tours ADD COLUMN details JSON"))
     for index in Tour.__table__.indexes:
         index.create(engine, checkfirst=True)
-    raw_columns = {c["name"] for c in inspect(engine).get_columns("raw_posts")}
-    if "comment_available" not in raw_columns:
+    # Kanalga izoh yozish olib tashlandi: raw_posts.comment_available ustuni va
+    # tour_comments jadvali endi kerak emas. Ilova ichidagi izohlar tour_feedback da.
+    if "comment_available" in {c["name"] for c in inspect(engine).get_columns("raw_posts")}:
+        try:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE raw_posts DROP COLUMN comment_available"))
+        except Exception as exc:
+            log.warning("raw_posts.comment_available tashlanmadi: %s", exc)
+    if "tour_comments" in inspect(engine).get_table_names():
         with engine.begin() as connection:
-            connection.execute(text("ALTER TABLE raw_posts ADD COLUMN comment_available BOOLEAN"))
-    comment_columns = {c["name"] for c in inspect(engine).get_columns("tour_comments")}
-    additions = {
-        "username": "VARCHAR(64)",
-        "photo_url": "VARCHAR(1024)",
-        "profile_url": "VARCHAR(256)",
-    }
-    with engine.begin() as connection:
-        for name, column_type in additions.items():
-            if name not in comment_columns:
-                connection.execute(text(f"ALTER TABLE tour_comments ADD COLUMN {name} {column_type}"))
+            connection.execute(text("DROP TABLE tour_comments"))
 
 
 def cleanup_expired_tours(today: str) -> int:
@@ -470,7 +450,6 @@ def cleanup_expired_tours(today: str) -> int:
         candidate_raw_ids = set(row[1] for row in expired)
         db.execute(delete(TourView).where(TourView.tour_id.in_(tour_ids)))
         db.execute(delete(TourLike).where(TourLike.tour_id.in_(tour_ids)))
-        db.execute(delete(TourComment).where(TourComment.tour_id.in_(tour_ids)))
         db.execute(delete(TourFeedback).where(TourFeedback.tour_id.in_(tour_ids)))
         db.execute(delete(Tour).where(Tour.id.in_(tour_ids)))
         db.flush()
