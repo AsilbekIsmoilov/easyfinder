@@ -697,6 +697,9 @@
     margin:17px 0 10px; padding:13px 14px; border:1px solid var(--ui-border);
     border-radius:16px; background:var(--ui-subtle);
   }
+  /* Davomiylik e'londa yo'q — sana yolg'iz qoladi va butun enga yoyiladi.
+     Ikki ustunli setkada u chap yarmida qolib, o'ng yarmi bo'sh turardi. */
+  .card .trip-dates.trip-dates-single { grid-template-columns:1fr; }
   .card .trip-date { display:flex; align-items:center; gap:9px; min-width:0; }
   .card .trip-date-duration { justify-content:flex-end; text-align:right; }
   .card .trip-date-icon {
@@ -755,6 +758,7 @@
     .card .fact:last-child { padding-right:0; }
     .card .fact-value { font-size:11.5px; }
     .card .trip-dates { grid-template-columns:repeat(2,minmax(0,1fr)); padding:12px 11px; }
+    .card .trip-dates.trip-dates-single { grid-template-columns:1fr; }
     .card .trip-date { gap:7px; }
     .card .trip-date-icon { width:25px; height:25px; flex-basis:25px; }
     .card .trip-date-value { font-size:11.5px; }
@@ -768,6 +772,7 @@
     .card .destination-city { overflow:hidden; }
     .card .price { max-width:118px; overflow:hidden; font-size:17px; text-overflow:ellipsis; white-space:nowrap; }
     .card .trip-dates { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; padding:12px 10px; }
+    .card .trip-dates.trip-dates-single { grid-template-columns:1fr; }
     .card .trip-date { gap:6px; }
     .card .trip-date-icon { width:22px; height:22px; flex:0 0 22px; display:grid; }
     .card .trip-date-label { font-size:8px; }
@@ -1044,7 +1049,8 @@ function cardIcon(name, className) {
   const country = locationName(t.country);
   // Ko'p shaharli yo'nalishni bitta uzun satr sifatida emas, alohida qismlarga
   // ajratib chiqaramiz — shunda u kesilmasdan chiroyli o'raladi.
-  const cityHtml = '<span class="city-track">' + locationParts(t.city)
+  const cityParts = locationParts(t.city);
+  const cityHtml = '<span class="city-track">' + cityParts
     .map(function(part) { return '<b>' + escapeHtml(part) + '</b>'; })
     .join('<i aria-hidden="true">·</i>') + '</span>';
   // Davomiylik faqat kunda. Aniqlanmagan bo'lsa bo'sh qoladi.
@@ -1062,8 +1068,18 @@ function cardIcon(name, className) {
     '<span class="days-badge">' + escapeHtml(daysUntil(t.departure_date)) + '</span></div>';
   return '<article class="card" data-tour-id="' + t.id + '">' + head +
     '<div class="card-body">' +
-    '<div class="card-top"><div class="destination"><div class="destination-country">' + escapeHtml(country) + '</div><div class="destination-city">' + cardIcon("pin", "destination-icon") + '<span class="city-parts">' + cityHtml + '</span></div></div><div class="price">' + escapeHtml(money(t.price_amount,t.price_currency)) + '</div></div>' +
-    '<div class="trip-dates"><div class="trip-date"><span class="trip-date-icon">' + cardIcon("takeoff") + '</span><div><div class="trip-date-label">' + tr("departureFact") + '</div><div class="trip-date-value">' + escapeHtml(formatDate(t.departure_date)) + '</div></div></div><div class="trip-date trip-date-duration"><div><div class="trip-date-label">' + tr("duration") + '</div><div class="trip-date-value">' + escapeHtml(duration) + '</div></div></div></div>' +
+    '<div class="card-top"><div class="destination">' +
+      (cityParts.length
+        ? '<div class="destination-country">' + escapeHtml(country) + '</div><div class="destination-city">' + cardIcon("pin", "destination-icon") + '<span class="city-parts">' + cityHtml + '</span></div>'
+        // Shahar aniqlanmagan (e'londa yozilmagan) — davlatni bo'sh joylashuv
+        // qatori ostida emas, asosiy sarlavha qilib ko'rsatamiz.
+        : '<div class="destination-city">' + cardIcon("pin", "destination-icon") + '<span class="city-parts"><span class="city-track"><b>' + escapeHtml(country) + '</b></span></span></div>'
+      ) + '</div><div class="price">' + escapeHtml(money(t.price_amount,t.price_currency)) + '</div></div>' +
+    '<div class="trip-dates' + (duration ? '' : ' trip-dates-single') + '"><div class="trip-date"><span class="trip-date-icon">' + cardIcon("takeoff") + '</span><div><div class="trip-date-label">' + tr("departureFact") + '</div><div class="trip-date-value">' + escapeHtml(formatDate(t.departure_date)) + '</div></div></div>' +
+    // Davomiylik e'londa ko'rsatilmagan bo'lsa, bo'sh yorliq qoldirmaymiz —
+    // u kartani tugallanmagandek ko'rsatadi. Sana katakchasi enga yoyiladi.
+    (duration ? '<div class="trip-date trip-date-duration"><div><div class="trip-date-label">' + tr("duration") + '</div><div class="trip-date-value">' + escapeHtml(duration) + '</div></div></div>' : '') +
+    '</div>' +
     '<div class="engagement">' +
       '<button class="engage-btn view-count" type="button" aria-label="' + tr("views") + '"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>' + stats.views + '</span></button>' +
       '<button class="engage-btn like-btn ' + (stats.liked ? 'liked' : '') + '" type="button" aria-label="' + tr("like") + '"><svg class="heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.7-7.5 1.1-1.1a5.5 5.5 0 0 0 0-7.8Z"/></svg><span>' + stats.likes + '</span></button>' +
